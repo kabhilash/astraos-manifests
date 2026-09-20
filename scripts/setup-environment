@@ -7,7 +7,7 @@
 #   raspberrypi5                 (RPi 5 dev)
 #   raspberrypi-cm5-io-board     (RPi CM5 on the official CM5 IO Board, dev)
 #   imx8mp-var-dart               (Variscite Symphony v1.7 dev - until mcb arrives)
-#   astraos-imx8mp-mcb           (production, mcb carrier - hardware pending)
+#   astrax-variscite-imx8mp           (production, mcb carrier - hardware pending)
 #
 # Env vars consumed:
 #   ASTRAOS_BUILD_TYPE = dev|prod (default dev). When "prod", local.conf
@@ -59,7 +59,7 @@ case "$MACHINE" in
   ${SOURCES_DIR}/meta-astrax-raspberrypi \\
 "
         ;;
-    imx8mp-var-dart|astraos-imx8mp-mcb)
+    imx8mp-var-dart|astrax-variscite-imx8mp)
         # NXP i.MX BSP stack must be listed before the Variscite layers
         # so the fsl-bsp-release / meta-freescale collections are
         # discovered first. meta-variscite-hab is BBLAYERS-included only
@@ -78,14 +78,14 @@ case "$MACHINE" in
   ${SOURCES_DIR}/meta-variscite-sdk-imx \\
   ${SOURCES_DIR}/meta-astrax-variscite \\
 "
-        if [ "${MACHINE}" = "astraos-imx8mp-mcb" ]; then
+        if [ "${MACHINE}" = "astrax-variscite-imx8mp" ]; then
             MACHINE_LAYERS="${MACHINE_LAYERS}  ${SOURCES_DIR}/meta-variscite-hab \\
 "
         fi
         ;;
     *)
         echo "ERROR: unknown MACHINE '${MACHINE}'" >&2
-        echo "Valid: raspberrypi5, raspberrypi-cm5-io-board, imx8mp-var-dart, astraos-imx8mp-mcb" >&2
+        echo "Valid: raspberrypi5, raspberrypi-cm5-io-board, imx8mp-var-dart, astrax-variscite-imx8mp" >&2
         return 1
         ;;
 esac
@@ -125,5 +125,5 @@ echo "  ASTRAOS_BUILD_TYPE = ${ASTRAOS_BUILD_TYPE}"
 echo ""
 echo "Next:"
 echo "  bitbake astraos-image-dev      # dev variant"
-echo "  bitbake astraos-image          # production (only on astraos-imx8mp-mcb)"
+echo "  bitbake astraos-image          # production (only on astrax-variscite-imx8mp)"
 echo ""

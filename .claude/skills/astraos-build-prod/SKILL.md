@@ -1,6 +1,6 @@
 ---
 name: astraos-build-prod
-description: Build the **signed production** AstraOS image (`astraos-image`) for the `astraos-imx8mp-mcb` MACHINE. Use whenever the user asks to "build the production image", "build prod for mcb", "build the signed mcb image", "produce the HABv4-signed wic", "build the production rootfs for the Variscite carrier", or any phrasing that means "real production-grade build for the mcb hardware". The production image includes dm-verity, HABv4 signing chain, RAUC bundle generation. It only targets the mcb MACHINE — do not attempt for raspberrypi5/cm5/Symphony (use `astraos-build-image` for those dev targets).
+description: Build the **signed production** AstraOS image (`astraos-image`) for the `astrax-variscite-imx8mp` MACHINE. Use whenever the user asks to "build the production image", "build prod for mcb", "build the signed mcb image", "produce the HABv4-signed wic", "build the production rootfs for the Variscite carrier", or any phrasing that means "real production-grade build for the mcb hardware". The production image includes dm-verity, HABv4 signing chain, RAUC bundle generation. It only targets the mcb MACHINE — do not attempt for raspberrypi5/cm5/Symphony (use `astraos-build-image` for those dev targets).
 ---
 
 Run the prod-image subcommand of the AstraOS build script:
@@ -11,8 +11,8 @@ cd /Users/akothapalli/Projects/AstraA/X/AstraOS
 ```
 
 No MACHINE argument needed — `prod-image` is hardwired to
-`astraos-imx8mp-mcb`. The build script sources
-`scripts/setup-environment astraos-imx8mp-mcb` and then `bitbake
+`astrax-variscite-imx8mp`. The build script sources
+`scripts/setup-environment astrax-variscite-imx8mp` and then `bitbake
 astraos-image` (note: not `-dev`).
 
 ## When this is the wrong skill

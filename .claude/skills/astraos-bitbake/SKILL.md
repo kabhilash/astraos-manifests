@@ -18,7 +18,7 @@ script first sources `setup-environment <MACHINE>` (which writes
 ## Extracting parameters from the user's request
 
 **MACHINE** — same mapping as `astraos-build-image` (raspberrypi5,
-raspberrypi-cm5-io-board, imx8mp-var-dart, astraos-imx8mp-mcb). If
+raspberrypi-cm5-io-board, imx8mp-var-dart, astrax-variscite-imx8mp). If
 unspecified, ask.
 
 **bitbake-args** — the flags + recipes the user mentioned, in order.
