@@ -9,9 +9,9 @@ BBPATH = "${TOPDIR}"
 BBFILES ?= ""
 
 BBLAYERS = " \
-  @SOURCES@/poky/meta \
-  @SOURCES@/poky/meta-poky \
-  @SOURCES@/poky/meta-yocto-bsp \
+  @SOURCES@/openembedded-core/meta \
+  @SOURCES@/meta-yocto/meta-poky \
+  @SOURCES@/meta-yocto/meta-yocto-bsp \
   @SOURCES@/meta-openembedded/meta-oe \
   @SOURCES@/meta-openembedded/meta-python \
   @SOURCES@/meta-openembedded/meta-networking \

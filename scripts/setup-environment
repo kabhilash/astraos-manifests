@@ -90,14 +90,21 @@ case "$MACHINE" in
         ;;
 esac
 
-# Initialize the build dir using poky's helper (sets PATH, exports BB_ENV_*, etc.)
-if [ ! -d "${SOURCES_DIR}/poky" ]; then
-    echo "ERROR: ${SOURCES_DIR}/poky not found - run 'repo init && repo sync' first" >&2
+# Initialize the build dir using openembedded-core's helper (sets PATH,
+# exports BB_ENV_*, etc.). Since wrynose, poky is no longer a single combined
+# repo - bitbake and openembedded-core are separate sibling checkouts under
+# sources/; oe-init-build-env finds bitbake via that sibling directory.
+if [ ! -d "${SOURCES_DIR}/openembedded-core" ]; then
+    echo "ERROR: ${SOURCES_DIR}/openembedded-core not found - run 'repo init && repo sync' first" >&2
+    return 1
+fi
+if [ ! -d "${SOURCES_DIR}/bitbake" ]; then
+    echo "ERROR: ${SOURCES_DIR}/bitbake not found - run 'repo init && repo sync' first" >&2
     return 1
 fi
 
 # shellcheck disable=SC1091
-source "${SOURCES_DIR}/poky/oe-init-build-env" "${BUILD_PATH}" >/dev/null
+source "${SOURCES_DIR}/openembedded-core/oe-init-build-env" "${BUILD_PATH}" >/dev/null
 
 # Always regenerate bblayers.conf and local.conf on every source so that
 # bblayers picks up MACHINE_LAYERS changes (e.g. meta-raspberrypi vs.

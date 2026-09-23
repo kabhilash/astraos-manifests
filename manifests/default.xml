@@ -6,9 +6,18 @@
   or production (astrax-variscite-imx8mp) image variants. The MACHINE-specific layer
   selection happens in conf/bblayers.conf.in via scripts/setup-environment.
 
-  TODO: SHAs marked with revision="scarthgap" should be pinned to specific
-  commits before production use. Variscite-controlled SHAs are already pinned
-  to the L6.6.52_2.2.2 release (var01-2.2.2-v1.2).
+  Migrated 2026-09 from Yocto "scarthgap" to "wrynose", tracking Variscite's
+  reference manifest:
+    varigit/variscite-bsp-platform @ wrynose/imx-6.18.20-2.0.0.xml
+  As of wrynose, poky is no longer a single combined repo - it now ships as
+  three separate projects (bitbake, openembedded-core, meta-yocto) that land
+  as siblings under sources/. See scripts/setup-environment and
+  conf/bblayers.conf.in for the corresponding layout change.
+
+  TODO: SHAs marked with revision="wrynose" (a branch, not a pinned commit)
+  should be pinned to specific commits before production use.
+  Variscite-controlled SHAs are already pinned to the L6.18.20-2.0.0 release
+  (wrynose_var01 / wrynose_6.18.20_2.0.0_var01).
 -->
 <manifest>
 
@@ -23,41 +32,53 @@
   <remote name="freescale" fetch="https://github.com/Freescale/"/>
   <remote name="kraj"      fetch="https://github.com/kraj/"/>
 
-  <default revision="scarthgap" remote="yocto" sync-j="4"/>
+  <default revision="wrynose" remote="yocto" sync-j="4"/>
 
-  <!-- Yocto core -->
-  <project name="poky" path="sources/poky" remote="yocto" revision="scarthgap"/>
+  <!-- Yocto core. wrynose splits what used to be the single "poky" repo into
+       three projects (bitbake, openembedded-core, meta-yocto). They land as
+       siblings under sources/; scripts/setup-environment sources
+       openembedded-core's oe-init-build-env, which finds bitbake via the
+       sibling sources/bitbake directory. -->
+  <project name="bitbake" path="sources/bitbake" remote="oe"
+           revision="fae9db3168dbff1b8c76fe9c6726a9687ff97514" upstream="2.18"/>
+  <project name="openembedded-core" path="sources/openembedded-core" remote="oe"
+           revision="f66b182e2ff431b624dfc3a506d25dc8f1fc6db2" upstream="wrynose"/>
+  <project name="meta-yocto" path="sources/meta-yocto" remote="yocto"
+           revision="824795b885b25e074a2880fbcd54e1a6c875d47d" upstream="wrynose"/>
 
   <!-- OpenEmbedded -->
-  <project name="meta-openembedded" path="sources/meta-openembedded" remote="oe" revision="scarthgap"/>
+  <project name="meta-openembedded" path="sources/meta-openembedded" remote="oe"
+           revision="af8b6d6b2f0b11595b0a0d5b82efa3129d52a628" upstream="wrynose"/>
 
   <!-- Raspberry Pi BSP -->
-  <project name="meta-raspberrypi" path="sources/meta-raspberrypi" remote="yocto" revision="scarthgap"/>
+  <project name="meta-raspberrypi" path="sources/meta-raspberrypi" remote="yocto" revision="wrynose"/>
 
-  <!-- Qt 6.8.3 LTS - meta-qt6 uses Qt-version branch names, not Yocto release names -->
+  <!-- Qt 6.11.0 - meta-qt6 uses Qt-version branch names, not Yocto release
+       names. SHA matches Variscite's validated wrynose reference exactly
+       (their manifest sources the identical commit via a GitHub mirror; we
+       keep using the official code.qt.io remote). -->
   <project name="meta-qt6" path="sources/meta-qt6" remote="qt"
-           revision="00c3bd954341a2a755fdee6b978af952f51793e7"
-           upstream="6.8.3"/>
+           revision="3cd8b59a1303b3c079f5345c6b2555d1037925f6"
+           upstream="6.11.0"/>
 
-  <!-- Latest Rust on Scarthgap via LTS mixin -->
+  <!-- Latest Rust on wrynose via LTS mixin -->
   <!-- TODO: pin SHA -->
-  <project name="meta-lts-mixins" path="sources/meta-lts-mixins" remote="yocto" revision="scarthgap/rust"/>
+  <project name="meta-lts-mixins" path="sources/meta-lts-mixins" remote="yocto" revision="wrynose/rust"/>
 
   <!-- RAUC update framework -->
   <!-- TODO: pin SHA -->
-  <project name="meta-rauc" path="sources/meta-rauc" remote="rauc" revision="scarthgap"/>
+  <project name="meta-rauc" path="sources/meta-rauc" remote="rauc" revision="wrynose"/>
 
   <!-- meta-security: provides packagegroup-security-tpm2 (meta-tpm sub-layer)
-       used by astraos-image-dev. Pinned to Variscite's v1.2 SHA for
-       known-good compatibility with the NXP/scarthgap stack. -->
+       used by astraos-image-dev. Pinned to Variscite's wrynose reference SHA. -->
   <project name="meta-security" path="sources/meta-security" remote="yocto"
-           revision="b13f1705d723650de61277670c8a76aadea4cfdd"
-           upstream="scarthgap"/>
+           revision="c0d1d6200e7a84c39fb940cb1f22aad4b0b3d808"
+           upstream="wrynose"/>
 
   <!-- Variscite BSP layers + the NXP i.MX BSP stack they sit on top of.
        SHAs are taken verbatim from Variscite's reference manifest for
-       the L6.6.52-2.2.2 release:
-         varigit/variscite-bsp-platform @ scarthgap/imx-6.6.52-2.2.2.xml
+       the L6.18.20-2.0.0 release:
+         varigit/variscite-bsp-platform @ wrynose/imx-6.18.20-2.0.0.xml
        The kernel (varigit/linux-imx) and U-Boot (varigit/uboot-imx)
        source trees are fetched by the BSP recipes themselves via
        SRC_URI at build time; they're not separate manifest projects.
@@ -65,46 +86,46 @@
        NXP-side stack (provides the fsl-bsp-release collection,
        toolchain bits, Freescale BSP, virt support). -->
   <project name="meta-arm" path="sources/meta-arm" remote="yocto"
-           revision="a81c19915b5b9e71ed394032e9a50fd06919e1cd"
-           upstream="scarthgap"/>
+           revision="4112fda50b814ad6e3cfaefe5cad78a83114599a"
+           upstream="master"/>
   <project name="meta-freescale" path="sources/meta-freescale" remote="freescale"
-           revision="0c27c21cab57876474bb572e5d378b6707e41224"
-           upstream="scarthgap"/>
+           revision="fe38e65a09ccddf921a2ece98ac7af7b12df5183"
+           upstream="wrynose"/>
   <project name="meta-freescale-3rdparty" path="sources/meta-freescale-3rdparty" remote="freescale"
-           revision="ce10c065119c2d4e359235c77aae7e0d843533ef"
-           upstream="scarthgap"/>
+           revision="26d8b36a72acf1458a2520e4e9f4d654a4ba77e4"
+           upstream="wrynose"/>
   <project name="meta-freescale-distro" path="sources/meta-freescale-distro" remote="freescale"
-           revision="b9d6a5d9931922558046d230c1f5f4ef6ee72345"
-           upstream="scarthgap"/>
+           revision="4464f38b4aa618b5942f5e35dd25cff590f410a6"
+           upstream="wrynose"/>
   <project name="meta-virtualization" path="sources/meta-virtualization" remote="yocto"
-           revision="8409bc0c8b9209327add72d8fa72571cdeb5521e"
-           upstream="scarthgap"/>
+           revision="022f4356d4a9b389f51472d40a9330aa59f6bb9a"
+           upstream="master"/>
   <project name="meta-clang" path="sources/meta-clang" remote="kraj"
-           revision="5c602337ea1a80fb7217eeda04e396cf90587dca"
-           upstream="scarthgap"/>
+           revision="ef0d22f21910a0c30c967eeb17d8f209806e2d81"
+           upstream="wrynose"/>
   <project name="meta-imx" path="sources/meta-imx" remote="nxp-imx"
-           revision="refs/tags/rel_imx_6.6.52_2.2.2"
-           upstream="scarthgap-6.6.52-2.2.2"/>
+           revision="refs/tags/rel_imx_6.18.20_2.0.0"
+           upstream="wrynose-6.18.20-2.0.0"/>
 
-  <!-- Variscite layers (pinned to scarthgap_6.6.52-2.2.2_var01). -->
+  <!-- Variscite layers (pinned to wrynose_6.18.20-2.0.0_var01). -->
   <project name="meta-variscite-bsp-common" path="sources/meta-variscite-bsp-common" remote="varigit"
-           revision="2a7c846763ef3a3686a6bd3125e9bb436d8fab2c"
-           upstream="scarthgap_6.6.52-2.2.2_var01"/>
+           revision="233fda88218170ad059f085c89c3620b686dafed"
+           upstream="wrynose_var01"/>
   <project name="meta-variscite-bsp-imx" path="sources/meta-variscite-bsp-imx" remote="varigit"
-           revision="243bdb397a01766c1c0ef13793a8e2cdb74df976"
-           upstream="scarthgap_6.6.52-2.2.2_var01"/>
+           revision="231407cd24f390b610f6b5853280c168d1ac4be0"
+           upstream="wrynose_6.18.20_2.0.0_var01"/>
   <project name="meta-variscite-sdk-common" path="sources/meta-variscite-sdk-common" remote="varigit"
-           revision="7b45393620f4496b4dfac1b5a71245377a8ccbde"
-           upstream="scarthgap_6.6.52-2.2.2_var01"/>
+           revision="69cf053f7c427b151cd0e5e86b91b73e1dacc270"
+           upstream="wrynose_var01"/>
   <project name="meta-variscite-sdk-imx" path="sources/meta-variscite-sdk-imx" remote="varigit"
-           revision="85fd9db8392b706c6bd9a842a02d80c7aeffc39f"
-           upstream="scarthgap_6.6.52-2.2.2_var01"/>
+           revision="0b4c38c1fd1acf726ce0c1e6d7e7a49880f69bf4"
+           upstream="wrynose_6.18.20_2.0.0_var01"/>
   <!-- meta-variscite-hab provides HABv4 signing for production builds
        (astrax-variscite-imx8mp). Synced unconditionally, wired into BBLAYERS
        only by setup-environment when building production. -->
   <project name="meta-variscite-hab" path="sources/meta-variscite-hab" remote="varigit"
-           revision="e9ba2f5099939df9bcbdf540192f21ecbea3de08"
-           upstream="scarthgap_6.6.52-2.2.2_var01"/>
+           revision="84c982942b4e41755cd93f1c34c33498c8e7a2d9"
+           upstream="wrynose_var01"/>
 
   <!-- Astra-owned layers (separate repos under github.com/kabhilash; SSH URLs).
        The build machine needs an SSH key with read access to each repo (deploy
