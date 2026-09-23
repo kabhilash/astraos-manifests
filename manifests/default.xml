@@ -131,8 +131,8 @@
        The build machine needs an SSH key with read access to each repo (deploy
        key, account-level key, or org-level key when these eventually move to
        an Astra org). -->
-  <project name="meta-astrax"             path="sources/meta-astrax"             remote="kabhilash" revision="main"/>
-  <project name="meta-astrax-raspberrypi" path="sources/meta-astrax-raspberrypi" remote="kabhilash" revision="main"/>
-  <project name="meta-astrax-variscite"   path="sources/meta-astrax-variscite"   remote="kabhilash" revision="main"/>
+  <project name="meta-astrax"             path="sources/meta-astrax"             remote="kabhilash" revision="wrynose/astrax-variscite-imx8mp"/>
+  <project name="meta-astrax-raspberrypi" path="sources/meta-astrax-raspberrypi" remote="kabhilash" revision="wrynose/astrax-variscite-imx8mp"/>
+  <project name="meta-astrax-variscite"   path="sources/meta-astrax-variscite"   remote="kabhilash" revision="wrynose/astrax-variscite-imx8mp"/>
 
 </manifest>
