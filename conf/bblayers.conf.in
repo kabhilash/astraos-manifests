@@ -17,6 +17,7 @@ BBLAYERS = " \
   @SOURCES@/meta-openembedded/meta-networking \
   @SOURCES@/meta-openembedded/meta-multimedia \
   @SOURCES@/meta-openembedded/meta-filesystems \
+  @SOURCES@/meta-openembedded/meta-perl \
   @SOURCES@/meta-qt6 \
   @SOURCES@/meta-lts-mixins \
   @SOURCES@/meta-rauc \

@@ -69,6 +69,7 @@ case "$MACHINE" in
   ${SOURCES_DIR}/meta-arm/meta-arm-toolchain \\
   ${SOURCES_DIR}/meta-clang \\
   ${SOURCES_DIR}/meta-freescale \\
+  ${SOURCES_DIR}/meta-freescale-distro \\
   ${SOURCES_DIR}/meta-virtualization \\
   ${SOURCES_DIR}/meta-imx/meta-imx-bsp \\
   ${SOURCES_DIR}/meta-imx/meta-imx-sdk \\
