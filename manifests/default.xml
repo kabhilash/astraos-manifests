@@ -53,13 +53,16 @@
   <!-- Raspberry Pi BSP -->
   <project name="meta-raspberrypi" path="sources/meta-raspberrypi" remote="yocto" revision="wrynose"/>
 
-  <!-- Qt 6.11.0 - meta-qt6 uses Qt-version branch names, not Yocto release
-       names. SHA matches Variscite's validated wrynose reference exactly
-       (their manifest sources the identical commit via a GitHub mirror; we
-       keep using the official code.qt.io remote). -->
+  <!-- Qt 6.8.3 - meta-qt6 uses Qt-version branch names, not Yocto release
+       names. Reverted from the wrynose-validated 6.11.0 back to the
+       scarthgap-era 6.8.3 pin (same SHA used before this migration) at
+       the user's request. Needs the same local LAYERSERIES_COMPAT patch
+       to sources/meta-qt6/conf/layer.conf as 6.11.0 did (also missing
+       "wrynose" upstream, and for the same not-yet-published reason) -
+       see that file's comment. -->
   <project name="meta-qt6" path="sources/meta-qt6" remote="qt"
-           revision="3cd8b59a1303b3c079f5345c6b2555d1037925f6"
-           upstream="6.11.0"/>
+           revision="00c3bd954341a2a755fdee6b978af952f51793e7"
+           upstream="6.8.3"/>
 
   <!-- Latest Rust on wrynose via LTS mixin -->
   <!-- TODO: pin SHA -->
