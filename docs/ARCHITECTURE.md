@@ -9,7 +9,7 @@ its repository.
 
 | Role | SoC | Board | MACHINE | Status |
 |---|---|---|---|---|
-| Production | NXP i.MX8M Plus | Variscite VAR-SOM-MX8M-Plus on custom carrier `mcb` | `astraos-imx8mp-mcb` | **Hardware pending** — MACHINE spec authored, not yet exercised |
+| Production | NXP i.MX8M Plus | Variscite VAR-SOM-MX8M-Plus on custom carrier `mcb` | `astrax-variscite-imx8mp` | **Hardware pending** — MACHINE spec authored, not yet exercised |
 | Variscite dev | NXP i.MX8M Plus | Variscite VAR-SOM-MX8M-Plus on Variscite Symphony **v1.7** | `imx8mp-var-dart` (Variscite's combined machine name for both DART-MX8M-PLUS and VAR-SOM-MX8M-Plus) | Active — primary Variscite dev target until `mcb` arrives |
 | RPi dev | Broadcom BCM2712 | Raspberry Pi 5 | `raspberrypi5` (upstream) | Active |
 | RPi dev | Broadcom BCM2712 | Raspberry Pi Compute Module 5 on the official CM5 IO Board | `raspberrypi-cm5-io-board` (upstream) | Active |
@@ -43,7 +43,7 @@ adding anything to `IMAGE_INSTALL`, `TOOLCHAIN_TARGET_TASK`, or
    SBOM, CVE report) traces to a single git SHA. No build-machine
    nondeterminism.
 4. **Production-vs-dev images split cleanly.** Production target
-   (`astraos-imx8mp-mcb`) is signed, dm-verity, HMI-only. Dev images
+   (`astrax-variscite-imx8mp`) is signed, dm-verity, HMI-only. Dev images
    (RPi5, CM5, Variscite Symphony) get debug tools, SSH, writable
    rootfs. Never mix.
 
@@ -88,7 +88,7 @@ meta-astrax-raspberrypi/           thin: RPi-specific overrides only
 └─ wic/                            astraos-rpi.wks.in
 
 meta-astrax-variscite/             Variscite + mcb-carrier overrides
-├─ conf/machine/astraos-imx8mp-mcb.conf
+├─ conf/machine/astrax-variscite-imx8mp.conf
 ├─ recipes-bsp/                    U-Boot mcb defconfig fragment, RAUC bootcount
 ├─ recipes-kernel/linux-variscite/files/imx8mp-var-dart-mcb.dts
 ├─ recipes-graphics/               Qt eglfs_kms_imx config for Vivante
@@ -208,7 +208,7 @@ Two image recipes in `meta-astrax/recipes-images/` sharing a base:
   - HMI service + workers + Avahi + network stack only
   - No SSH, no shell access by default
   - HABv4-signed boot chain
-  - Targets `astraos-imx8mp-mcb` only
+  - Targets `astrax-variscite-imx8mp` only
 - `astraos-image-dev.bb` (development)
   - `IMAGE_FEATURES += "debug-tweaks tools-debug ssh-server-dropbear tools-profile"`
   - Writable rootfs
@@ -305,7 +305,7 @@ machine.
   - `astraos-image-dev` × `raspberrypi5`
   - `astraos-image-dev` × `raspberrypi-cm5-io-board`
   - `astraos-image-dev` × `imx8mp-var-dart`
-  - `astraos-image` × `astraos-imx8mp-mcb` (signed, on `main`/release branches)
+  - `astraos-image` × `astrax-variscite-imx8mp` (signed, on `main`/release branches)
 - Production signing: dedicated locked-down signing runner, HABv4 SRK +
   RAUC bundle keys held in HSM, accessed via PKCS#11. Keys never leave HSM,
   never visible to general CI runners

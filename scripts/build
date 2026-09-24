@@ -23,7 +23,7 @@
 #   scripts/build [--local | --remote] bitbake     <MACHINE> <args...>
 #   scripts/build [--local | --remote] shell       <MACHINE>
 #
-# MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astraos-imx8mp-mcb
+# MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-variscite-imx8mp
 #
 # Override remote target with env vars (defaults shown):
 #   ASTRAOS_BUILDER_HOST=10.11.12.20
@@ -67,7 +67,7 @@ Usage (most subcommands accept an optional --local | --remote prefix):
   scripts/build shell       <MACHINE>                  Interactive shell, env sourced
   scripts/build download    <MACHINE> [<dest-dir>]     scp the latest dev wic.zst from the builder
 
-MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astraos-imx8mp-mcb
+MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-variscite-imx8mp
 
 Default mode: --remote, dispatches via ssh to the build machine
   ${BUILDER_USER}@${BUILDER_HOST}:${BUILDER_PORT} (path: ${BUILDER_PATH})
@@ -179,10 +179,10 @@ _run() {
 # Validate MACHINE is one of the four known targets
 _check_machine() {
     case "$1" in
-        raspberrypi5|raspberrypi-cm5-io-board|imx8mp-var-dart|astraos-imx8mp-mcb) ;;
+        raspberrypi5|raspberrypi-cm5-io-board|imx8mp-var-dart|astrax-variscite-imx8mp) ;;
         *)
             echo "ERROR: unknown MACHINE '$1'" >&2
-            echo "Valid: raspberrypi5, raspberrypi-cm5-io-board, imx8mp-var-dart, astraos-imx8mp-mcb" >&2
+            echo "Valid: raspberrypi5, raspberrypi-cm5-io-board, imx8mp-var-dart, astrax-variscite-imx8mp" >&2
             exit 1
             ;;
     esac
@@ -231,7 +231,7 @@ if [ "${1:-}" = "download" ]; then
         exit 1
     fi
     case "${MACHINE}" in
-        raspberrypi5|raspberrypi-cm5-io-board|imx8mp-var-dart|astraos-imx8mp-mcb) ;;
+        raspberrypi5|raspberrypi-cm5-io-board|imx8mp-var-dart|astrax-variscite-imx8mp) ;;
         *)
             echo "ERROR: unknown MACHINE '${MACHINE}'" >&2
             exit 1
@@ -356,7 +356,7 @@ case "${cmd}" in
     prod-image)
         # ASTRAOS_BUILD_TYPE=prod enables the CVE database scan in
         # local.conf (see conf/local.conf.in conditional INHERIT).
-        _run "ASTRAOS_BUILD_TYPE=prod source scripts/setup-environment astraos-imx8mp-mcb && bitbake astraos-image"
+        _run "ASTRAOS_BUILD_TYPE=prod source scripts/setup-environment astrax-variscite-imx8mp && bitbake astraos-image"
         ;;
 
     sdk)

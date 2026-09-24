@@ -3,7 +3,7 @@
   AstraOS google-repo manifest.
 
   Pulls every layer needed to build either dev (raspberrypi5/raspberrypi-cm5-io-board/imx8mp-var-dart)
-  or production (astraos-imx8mp-mcb) image variants. The MACHINE-specific layer
+  or production (astrax-variscite-imx8mp) image variants. The MACHINE-specific layer
   selection happens in conf/bblayers.conf.in via scripts/setup-environment.
 
   TODO: SHAs marked with revision="scarthgap" should be pinned to specific
@@ -100,7 +100,7 @@
            revision="75853a038ec4686bd5b834062ba4987ace8ec816"
            upstream="scarthgap_6.6.52-2.2.2_var01"/>
   <!-- meta-variscite-hab provides HABv4 signing for production builds
-       (astraos-imx8mp-mcb). Synced unconditionally, wired into BBLAYERS
+       (astrax-variscite-imx8mp). Synced unconditionally, wired into BBLAYERS
        only by setup-environment when building production. -->
   <project name="meta-variscite-hab" path="sources/meta-variscite-hab" remote="varigit"
            revision="e9ba2f5099939df9bcbdf540192f21ecbea3de08"

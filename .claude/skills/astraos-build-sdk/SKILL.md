@@ -20,12 +20,12 @@ Same mapping as `astraos-build-image`:
 | "raspberrypi5", "rpi 5", "pi 5" | `raspberrypi5` |
 | "cm5", "compute module 5", "cm5 io board" | `raspberrypi-cm5-io-board` |
 | "variscite", "var-som", "symphony" | `imx8mp-var-dart` |
-| "mcb", "main carrier board", "production carrier" | `astraos-imx8mp-mcb` |
+| "mcb", "main carrier board", "production carrier" | `astrax-variscite-imx8mp` |
 
 The SDK MACHINE only matters for the **target sysroot** (which arch the
 SDK is built to compile for). If the user just says "build the SDK"
 without specifying, ask which target. Most app dev work uses the
-production-target SDK (`astraos-imx8mp-mcb`) for the canonical sysroot,
+production-target SDK (`astrax-variscite-imx8mp`) for the canonical sysroot,
 or `imx8mp-var-dart` while `mcb` hardware is pending.
 
 ## What the user gets
