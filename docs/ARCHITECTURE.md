@@ -61,7 +61,8 @@ adding anything to `IMAGE_INSTALL`, `TOOLCHAIN_TARGET_TASK`, or
 `PACKAGE_CLASSES = "package_rpm"` distro-wide. The **dev image** includes
 `package-management` in `IMAGE_FEATURES`, so engineers can iterate against
 a running device with `dnf install <pkg>` / `dnf upgrade` pointed at the
-build machine's `deploy/rpm/` tree. The **production image**
+build machine's published dev package feed (see "Dev package feed"
+below). The **production image**
 deliberately omits `package-management`: zero `dnf`/`rpm` binaries in
 the runtime image, all installation/update goes through RAUC bundle
 swaps.
@@ -169,6 +170,48 @@ mounts for BlueZ, app state, and journald are owned by `meta-astrax`.
   auth needed; signature is the trust anchor). Per-device cert used for
   mTLS to the OTA endpoint as defense-in-depth
 - Telemetry / fleet console: deferred to v2
+
+### Dev package feed
+
+Dev images (Variscite only for now) update in place with `dnf` from an
+rpm feed on the build machine. `astrax-updater` (sibling repo) is the
+on-device client. The feed never serves the production image.
+
+`scripts/build publish <MACHINE>` (`imx8mp-var-dart` or
+`astrax-variscite-imx8mp`):
+
+1. builds `astraos-image-dev` and runs `package-index` (a no-op build
+   when the image is current)
+2. writes `astrax-manifest.json` via `scripts/feed-manifest`: the image's
+   package set with the exact NEVRA, rpm path and rpm header SHA-256 of
+   each package, plus the git SHA of every layer
+3. snapshots `deploy/rpm/` into
+   `${ASTRAOS_FEED_ROOT}/<MACHINE>/<build-id>/` (rpms hardlinked,
+   repodata copied) and atomically points `<MACHINE>/main` at it
+4. keeps the newest `ASTRAOS_FEED_KEEP` (5) snapshots per MACHINE
+5. makes sure the `astraos-feed` nginx container is serving
+   `${ASTRAOS_FEED_ROOT}` on `ASTRAOS_FEED_PORT` (8090)
+
+```
+http://10.11.12.20:8090/<MACHINE>/main/                  current snapshot
+http://10.11.12.20:8090/<MACHINE>/<build-id>/            retained snapshots
+http://10.11.12.20:8090/<MACHINE>/main/astrax-manifest.json
+```
+
+Why snapshots rather than serving `deploy/rpm/` directly: any bitbake
+run after the metadata changes prunes the stale outputs of changed
+recipes from `deploy/rpm/`, and the next build rewrites it in place. A
+board reading the live directory can see a feed that no longer matches
+any image. Snapshots stay put.
+
+Why the manifest pins exact NEVRA and header digests: there is no PR
+server, so a rebuilt package can keep its version-release, and stale
+rpms left in `deploy/rpm/` make "latest" ambiguous (`+git<sha>` versions
+don't sort by age). Boards install the exact NEVRA the manifest names,
+and compare header digests to spot rebuilds.
+
+Plain HTTP, no auth, `gpgcheck=0`: the feed is reachable only on the LAN
+and tailnet, and carries dev packages only.
 
 ## Security
 

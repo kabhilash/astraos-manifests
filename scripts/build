@@ -22,6 +22,7 @@
 #   scripts/build [--local | --remote] recipe      <MACHINE> <RECIPE> [TASK]
 #   scripts/build [--local | --remote] bitbake     <MACHINE> <args...>
 #   scripts/build [--local | --remote] shell       <MACHINE>
+#   scripts/build [--local | --remote] publish     <MACHINE>
 #
 # MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-variscite-imx8mp
 #
@@ -31,6 +32,12 @@
 #   ASTRAOS_BUILDER_PORT=22
 #   ASTRAOS_BUILDER_PATH=/home/akothapalli/yocto/astraos
 #   ASTRAOS_BUILDER_HOST_ROOT=/home/akothapalli/yocto  (parent of sstate/downloads on host)
+#
+# Dev rpm feed ('publish'; see docs/ARCHITECTURE.md "Dev package feed").
+# Read on the build machine, so set them there, not on the dispatching host:
+#   ASTRAOS_FEED_ROOT=${ASTRAOS_BUILDER_HOST_ROOT}/feeds
+#   ASTRAOS_FEED_PORT=8090
+#   ASTRAOS_FEED_KEEP=5   (snapshots retained per MACHINE)
 
 set -euo pipefail
 
@@ -46,6 +53,12 @@ BUILDER_PATH="${ASTRAOS_BUILDER_PATH:-/home/akothapalli/yocto/astraos}"
 # live on a spinning disk; we now keep everything under the user's NVMe-
 # backed home to avoid build I/O contention.
 BUILDER_HOST_ROOT="${ASTRAOS_BUILDER_HOST_ROOT:-$(dirname "${BUILDER_PATH}")}"
+
+FEED_ROOT="${ASTRAOS_FEED_ROOT:-${BUILDER_HOST_ROOT}/feeds}"
+FEED_PORT="${ASTRAOS_FEED_PORT:-8090}"
+FEED_KEEP="${ASTRAOS_FEED_KEEP:-5}"
+FEED_CONTAINER="astraos-feed"
+FEED_NGINX_IMAGE="nginx:1.27-alpine"
 
 # Canonical source of truth: GitHub.
 ASTRAOS_GIT_URL="${ASTRAOS_GIT_URL:-https://github.com/kabhilash/astraos-manifests.git}"
@@ -66,6 +79,8 @@ Usage (most subcommands accept an optional --local | --remote prefix):
   scripts/build bitbake     <MACHINE> <args...>        bitbake passthrough
   scripts/build shell       <MACHINE>                  Interactive shell, env sourced
   scripts/build download    <MACHINE> [<dest-dir>]     scp the latest dev wic.zst from the builder
+  scripts/build publish     <MACHINE>                  Build astraos-image-dev, snapshot its rpm feed and
+                                                       serve it to dev boards (Variscite MACHINEs only)
 
 MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-variscite-imx8mp
 
@@ -186,6 +201,84 @@ _check_machine() {
             exit 1
             ;;
     esac
+}
+
+# (Re)start the nginx container serving ${FEED_ROOT}. Recreated when the
+# nginx config, image, feed root or port changes, tracked via a label.
+_ensure_feed_server() {
+    local conf="${ASTRAOS_ROOT}/scripts/feed-nginx.conf"
+    local want have running
+    want=$(printf '%s %s %s %s' "$(sha256sum "${conf}" | cut -d' ' -f1)" \
+        "${FEED_NGINX_IMAGE}" "${FEED_ROOT}" "${FEED_PORT}" | sha256sum | cut -d' ' -f1)
+    have=$(docker inspect -f '{{index .Config.Labels "astraos.feed_config"}}' "${FEED_CONTAINER}" 2>/dev/null || true)
+    running=$(docker inspect -f '{{.State.Running}}' "${FEED_CONTAINER}" 2>/dev/null || true)
+    if [ "${have}" = "${want}" ] && [ "${running}" = "true" ]; then
+        return 0
+    fi
+    echo ">>> starting ${FEED_CONTAINER} (${FEED_NGINX_IMAGE}) on port ${FEED_PORT}"
+    docker rm -f "${FEED_CONTAINER}" >/dev/null 2>&1 || true
+    docker run -d --name "${FEED_CONTAINER}" --restart unless-stopped \
+        --label "astraos.feed_config=${want}" \
+        -p "${FEED_PORT}:80" \
+        -v "${FEED_ROOT}:/usr/share/nginx/html:ro" \
+        -v "${conf}:/etc/nginx/conf.d/default.conf:ro" \
+        "${FEED_NGINX_IMAGE}" >/dev/null
+}
+
+# Build astraos-image-dev for MACHINE, then publish its rpm feed as an
+# immutable snapshot under ${FEED_ROOT}/MACHINE/<build-id>/ and point
+# ${FEED_ROOT}/MACHINE/main at it. Building first is a no-op when the image
+# is current, and guarantees the image manifest and the feed agree.
+_publish() {
+    local machine="$1"
+    local build_dir="${ASTRAOS_ROOT}/build-${machine}"
+    local machine_root="${FEED_ROOT}/${machine}"
+    local build_id
+    build_id="$(date -u +%Y%m%dT%H%M%SZ)-$(git -C "${ASTRAOS_ROOT}" rev-parse --short HEAD 2>/dev/null || echo nogit)"
+
+    mkdir -p "${machine_root}"
+    exec 9>"${FEED_ROOT}/.publish.lock"
+    if ! flock -n 9; then
+        echo "ERROR: another publish is running (lock: ${FEED_ROOT}/.publish.lock)" >&2
+        exit 1
+    fi
+
+    _run "source scripts/setup-environment ${machine} \
+        && bitbake astraos-image-dev package-index \
+        && bitbake -c addto_recipe_sysroot rpm-native \
+        && \"\${ASTRAOS_ROOT}/scripts/feed-manifest\" --machine ${machine} --build-id ${build_id} \
+               --astraos-root \"\${ASTRAOS_ROOT}\" --output astrax-feed-manifest.json"
+
+    # Hardlink the rpms: cheap, and safe because bitbake replaces rpms
+    # rather than rewriting them. repodata/ is copied outright so the
+    # snapshot never shares an inode with a later package-index run.
+    local deploy_rpm="${build_dir}/tmp/deploy/rpm"
+    local staging="${machine_root}/.staging-${build_id}"
+    rm -rf "${staging}"
+    cp -al "${deploy_rpm}" "${staging}"
+    local repodata
+    for repodata in "${staging}"/*/repodata; do
+        [ -d "${repodata}" ] || continue
+        rm -rf "${repodata}"
+        cp -a "${deploy_rpm}/$(basename "$(dirname "${repodata}")")/repodata" "${repodata}"
+    done
+    cp "${build_dir}/astrax-feed-manifest.json" "${staging}/astrax-manifest.json"
+    mv "${staging}" "${machine_root}/${build_id}"
+
+    ln -sfn "${build_id}" "${machine_root}/.main.tmp"
+    mv -T "${machine_root}/.main.tmp" "${machine_root}/main"
+
+    # Build ids start with a UTC timestamp, so name order is age order.
+    local old
+    ls -1d "${machine_root}"/[0-9]*/ | sed 's:/$::' | head -n "-${FEED_KEEP}" | while read -r old; do
+        echo ">>> pruning $(basename "${old}")"
+        rm -rf "${old}"
+    done
+
+    _ensure_feed_server
+
+    echo ">>> published ${machine} ${build_id}"
+    echo ">>>   http://${BUILDER_HOST}:${FEED_PORT}/${machine}/main/"
 }
 
 # Short-circuit help / empty BEFORE any mode dispatch
@@ -387,6 +480,22 @@ case "${cmd}" in
         MACHINE="${1:-}"; [ -z "$MACHINE" ] && usage
         _check_machine "$MACHINE"
         _run "source scripts/setup-environment ${MACHINE} && exec bash"
+        ;;
+
+    publish)
+        MACHINE="${1:-}"; [ -z "$MACHINE" ] && usage
+        case "${MACHINE}" in
+            imx8mp-var-dart|astrax-variscite-imx8mp) ;;
+            *)
+                echo "ERROR: publish supports Variscite MACHINEs only (imx8mp-var-dart, astrax-variscite-imx8mp)" >&2
+                exit 1
+                ;;
+        esac
+        if _in_container; then
+            echo "ERROR: 'publish' runs on the build machine host, not inside the container" >&2
+            exit 1
+        fi
+        _publish "$MACHINE"
         ;;
 
     ""|-h|--help|help)

@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+# Write the astrax-updater feed manifest for a dev-image build.
+#
+# Runs inside the devcontainer from the build dir, after
+# `bitbake astraos-image-dev package-index` and
+# `bitbake -c addto_recipe_sysroot rpm-native`. Called by
+# `scripts/build publish`; not meant to be run by hand.
+#
+# For every package in the image manifest it records the exact NEVRA, the
+# feed-relative rpm path and the rpm header SHA-256. There is no PR server,
+# so a rebuilt package can keep its version-release; the header digest is
+# what lets a board tell a rebuilt package from an unchanged one
+# (`rpm -q --qf '%{SHA256HEADER}'` on an installed package returns the same
+# value as `rpm -qp` on the rpm it came from).
+
+import argparse
+import datetime
+import glob
+import json
+import os
+import subprocess
+import sys
+
+IMAGE = "astraos-image-dev"
+SCHEMA = 1
+QUERY_FORMAT = "%{NAME}\t%{EPOCHNUM}\t%{VERSION}\t%{RELEASE}\t%{ARCH}\t%{SHA256HEADER}\n"
+QUERY_CHUNK = 1000
+
+
+def die(msg):
+    print(f"feed-manifest: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def warn(msg):
+    print(f"feed-manifest: warning: {msg}", file=sys.stderr)
+
+
+def image_packages(deploy_dir, machine):
+    path = os.path.join(deploy_dir, "images", machine, f"{IMAGE}-{machine}.rootfs.manifest")
+    if not os.path.exists(path):
+        die(f"image manifest not found: {path}")
+    packages = []
+    with open(path) as f:
+        for line in f:
+            fields = line.split()
+            if not fields:
+                continue
+            if len(fields) != 3:
+                die(f"unexpected image manifest line: {line.rstrip()}")
+            packages.append(tuple(fields))
+    return packages
+
+
+def query_headers(files):
+    # oe-run-native prints "Getting sysroot..." on stdout, so keep only
+    # lines that have the query format's shape; rpm -qp answers in
+    # argument order, one line per file.
+    rows = []
+    for i in range(0, len(files), QUERY_CHUNK):
+        chunk = files[i:i + QUERY_CHUNK]
+        out = subprocess.run(
+            ["oe-run-native", "rpm-native", "rpm", "-qp", "--nosignature", "--qf", QUERY_FORMAT, *chunk],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        lines = [line.split("\t") for line in out.splitlines() if line.count("\t") == 5]
+        if len(lines) != len(chunk):
+            die(f"rpm -qp returned {len(lines)} rows for {len(chunk)} files")
+        rows.extend(lines)
+    return dict(zip(files, rows))
+
+
+def source_revisions(root):
+    revs = {}
+    candidates = [("astraos-manifests", root)]
+    candidates += [(os.path.basename(d.rstrip("/")), d) for d in sorted(glob.glob(os.path.join(root, "sources", "*/")))]
+    for name, path in candidates:
+        if not os.path.exists(os.path.join(path, ".git")):
+            continue
+        result = subprocess.run(["git", "-C", path, "rev-parse", "HEAD"], capture_output=True, text=True)
+        if result.returncode == 0:
+            revs[name] = result.stdout.strip()
+    return revs
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Write the astrax-updater feed manifest.")
+    parser.add_argument("--machine", required=True)
+    parser.add_argument("--build-id", required=True)
+    parser.add_argument("--astraos-root", required=True)
+    parser.add_argument("--output", required=True)
+    args = parser.parse_args()
+
+    deploy_dir = os.path.join(os.getcwd(), "tmp", "deploy")
+    rpm_dir = os.path.join(deploy_dir, "rpm")
+
+    candidates = {}
+    for name, arch, version in image_packages(deploy_dir, args.machine):
+        pattern = os.path.join(rpm_dir, arch, glob.escape(f"{name}-{version}-") + "*" + glob.escape(f".{arch}.rpm"))
+        candidates[(name, arch, version)] = sorted(glob.glob(pattern))
+
+    all_files = sorted({f for files in candidates.values() for f in files})
+    headers = query_headers(all_files)
+
+    packages = []
+    missing = []
+    for (name, arch, version), files in sorted(candidates.items()):
+        # The glob can over-match (a package whose name extends this one);
+        # keep only rpms whose header agrees.
+        matches = [f for f in files if headers[f][0] == name and headers[f][2] == version and headers[f][4] == arch]
+        if not matches:
+            missing.append(f"{name} {arch} {version}")
+            continue
+        if len(matches) > 1:
+            # Same name and version, different release: a PR bump left the
+            # old rpm behind. The newest file is the one the image used.
+            matches.sort(key=os.path.getmtime)
+            warn(f"{name}: {len(matches)} releases of {version} in feed, using {os.path.basename(matches[-1])}")
+        path = matches[-1]
+        _, epoch, _, release, _, digest = headers[path]
+        packages.append({
+            "name": name,
+            "epoch": int(epoch),
+            "version": version,
+            "release": release,
+            "arch": arch,
+            "path": os.path.relpath(path, rpm_dir),
+            "sha256header": digest,
+        })
+
+    if missing:
+        die("image packages with no rpm in the feed:\n  " + "\n  ".join(missing))
+
+    repos = sorted(
+        d for d in os.listdir(rpm_dir)
+        if os.path.exists(os.path.join(rpm_dir, d, "repodata", "repomd.xml"))
+    )
+    if not repos:
+        die(f"no repodata under {rpm_dir}; did package-index run?")
+
+    manifest = {
+        "schema": SCHEMA,
+        "build_id": args.build_id,
+        "machine": args.machine,
+        "image": IMAGE,
+        "created": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "sources": source_revisions(args.astraos_root),
+        "repos": repos,
+        "packages": packages,
+    }
+
+    tmp = args.output + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(manifest, f, indent=1)
+        f.write("\n")
+    os.replace(tmp, args.output)
+    print(f"feed-manifest: {len(packages)} packages, repos: {' '.join(repos)}")
+
+
+if __name__ == "__main__":
+    main()
