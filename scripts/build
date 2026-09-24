@@ -33,9 +33,17 @@
 #   ASTRAOS_BUILDER_PATH=/home/akothapalli/yocto/astraos
 #   ASTRAOS_BUILDER_HOST_ROOT=/home/akothapalli/yocto  (parent of sstate/downloads on host)
 #
-# Dev rpm feed ('publish'; see docs/ARCHITECTURE.md "Dev package feed").
-# Read on the build machine, so set them there, not on the dispatching host:
-#   ASTRAOS_FEED_ROOT=${ASTRAOS_BUILDER_HOST_ROOT}/feeds
+# Dev rpm feed ('publish'; see docs/ARCHITECTURE.md "Dev package feed"):
+#   ASTRAOS_FEED_ROOT   --local: an absolute path, or relative to the
+#                        current checkout (default: ${ASTRAOS_ROOT}/feeds,
+#                        i.e. this repo's own directory - NOT inside any
+#                        build-*/ dir, and outside ${BUILDER_PATH} so
+#                        `scripts/build clean` can't delete it).
+#                        --remote (default, no flag, or --remote): MUST be
+#                        set to an absolute path - there's no default,
+#                        since a relative one would resolve against
+#                        ${BUILDER_PATH} on the far side of the ssh hop,
+#                        not wherever you're running this from.
 #   ASTRAOS_FEED_PORT=8090
 #   ASTRAOS_FEED_KEEP=5   (snapshots retained per MACHINE)
 
@@ -54,7 +62,11 @@ BUILDER_PATH="${ASTRAOS_BUILDER_PATH:-/home/akothapalli/yocto/astraos}"
 # backed home to avoid build I/O contention.
 BUILDER_HOST_ROOT="${ASTRAOS_BUILDER_HOST_ROOT:-$(dirname "${BUILDER_PATH}")}"
 
-FEED_ROOT="${ASTRAOS_FEED_ROOT:-${BUILDER_HOST_ROOT}/feeds}"
+# Resolved lazily by _publish (after the remote-dispatch requirement below
+# has had a chance to run) rather than defaulted here, so a relative
+# ASTRAOS_FEED_ROOT is only ever interpreted against ASTRAOS_ROOT - which
+# by the time _publish runs is always "the checkout this process is
+# actually running in", local or (post-ssh-hop) remote.
 FEED_PORT="${ASTRAOS_FEED_PORT:-8090}"
 FEED_KEEP="${ASTRAOS_FEED_KEEP:-5}"
 FEED_CONTAINER="astraos-feed"
@@ -81,6 +93,8 @@ Usage (most subcommands accept an optional --local | --remote prefix):
   scripts/build download    <MACHINE> [<dest-dir>]     scp the latest dev wic.zst from the builder
   scripts/build publish     <MACHINE>                  Build astraos-image-dev, snapshot its rpm feed and
                                                        serve it to dev boards (Variscite MACHINEs only)
+                                                       Needs ASTRAOS_FEED_ROOT=<absolute path> when run
+                                                       over --remote (default --local: ${ASTRAOS_ROOT}/feeds)
 
 MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-variscite-imx8mp
 
@@ -232,10 +246,26 @@ _ensure_feed_server() {
 _publish() {
     local machine="$1"
     local build_dir="${ASTRAOS_ROOT}/build-${machine}"
-    local machine_root="${FEED_ROOT}/${machine}"
     local build_id
     build_id="$(date -u +%Y%m%dT%H%M%SZ)-$(git -C "${ASTRAOS_ROOT}" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 
+    # FEED_ROOT (global: _ensure_feed_server reads it too). Unset ->
+    # relative to this checkout, not $PWD or ${BUILDER_HOST_ROOT} - see the
+    # ASTRAOS_FEED_ROOT usage note at the top of this file. A relative
+    # ASTRAOS_FEED_ROOT is resolved against the checkout for the same
+    # reason. The remote-dispatch block above already enforces an absolute
+    # value before we ever get here when this run started as --remote.
+    if [ -z "${ASTRAOS_FEED_ROOT:-}" ]; then
+        FEED_ROOT="${ASTRAOS_ROOT}/feeds"
+    elif [ "${ASTRAOS_FEED_ROOT#/}" != "${ASTRAOS_FEED_ROOT}" ]; then
+        FEED_ROOT="${ASTRAOS_FEED_ROOT}"
+    else
+        FEED_ROOT="${ASTRAOS_ROOT}/${ASTRAOS_FEED_ROOT}"
+    fi
+    mkdir -p "${FEED_ROOT}"
+    FEED_ROOT="$(cd "${FEED_ROOT}" && pwd)"
+
+    local machine_root="${FEED_ROOT}/${machine}"
     mkdir -p "${machine_root}"
     exec 9>"${FEED_ROOT}/.publish.lock"
     if ! flock -n 9; then
@@ -394,6 +424,21 @@ fi
 # building a container is itself a setup step you might run before the
 # workspace exists).
 if [ "${MODE}" = "remote" ]; then
+    # publish writes outside ${BUILDER_PATH} (so `scripts/build clean`,
+    # which rm -rf's ${BUILDER_PATH}, can't take the feed with it). On this
+    # side of the ssh hop that means there's no sane default to fall back
+    # on: relative would resolve against ${BUILDER_PATH} on the builder,
+    # not anywhere the person running this command can see. Require it.
+    if [ "${1:-}" = "publish" ]; then
+        case "${ASTRAOS_FEED_ROOT:-}" in
+            /*) ;;
+            *)
+                echo "ERROR: publish over --remote requires ASTRAOS_FEED_ROOT set to an absolute path on ${BUILDER_HOST}" >&2
+                echo "       e.g.: ASTRAOS_FEED_ROOT=${BUILDER_HOST_ROOT}/feeds scripts/build publish ${2:-<MACHINE>}" >&2
+                exit 1
+                ;;
+        esac
+    fi
     quoted_args=$(printf '%q ' "$@")
     echo ">>> Dispatching to ${BUILDER_USER}@${BUILDER_HOST}:${BUILDER_PATH}"
     # Bootstrap the workspace + cache dirs on the builder when missing.
@@ -428,8 +473,16 @@ if [ "${MODE}" = "remote" ]; then
     else
         ssh_tty=""
     fi
+    # Forward the now-validated absolute ASTRAOS_FEED_ROOT across the ssh
+    # hop; nothing else the remote --local invocation reads is forwarded
+    # this way (it either has its own remote-side default, like
+    # BUILDER_PATH, or doesn't need one).
+    remote_env=""
+    if [ "${1:-}" = "publish" ]; then
+        remote_env="ASTRAOS_FEED_ROOT=$(printf '%q' "${ASTRAOS_FEED_ROOT}") "
+    fi
     exec ssh ${ssh_tty} -p "${BUILDER_PORT}" "${BUILDER_USER}@${BUILDER_HOST}" \
-        "${bootstrap_step} ${sync_step} cd ${BUILDER_PATH} && ./scripts/build --local ${quoted_args}"
+        "${bootstrap_step} ${sync_step} cd ${BUILDER_PATH} && ${remote_env}./scripts/build --local ${quoted_args}"
 fi
 
 cmd="${1:-}"
