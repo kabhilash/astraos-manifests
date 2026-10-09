@@ -85,6 +85,17 @@ BB_SIGNATURE_HANDLER = "OEEquivHash"
 SSTATE_DIR ?= "/cache/sstate/${MACHINE}"
 DL_DIR     ?= "/cache/downloads"
 
+# Hash equivalence database (BB_HASHSERVE = "auto" above) next to the sstate
+# it describes rather than in build-<MACHINE>/cache/: sstate objects are
+# stored under the hashes it records, so it has to outlive the build dir
+# exactly as long as sstate does - deleting build-<MACHINE>/ would otherwise
+# lose every recorded equivalence and rebuild those tasks and everything
+# downstream. Also silences wrynose's sanity warning about sstate outside
+# TOPDIR with the database inside it. Must not be on NFS (sqlite locking);
+# /cache is a local bind mount. Scarthgap's bitbake ignores this variable and
+# keeps the database in ${PERSISTENT_DIR}.
+BB_HASHSERVE_DB_DIR = "${SSTATE_DIR}"
+
 # LICENSE_FLAGS_ACCEPTED is set in meta-astrax/conf/distro/astraos.conf -
 # don't shadow it here. (Earlier this file hard-set the variable, which
 # masked distro additions like synaptics-killswitch for RPi 5 firmware.)
