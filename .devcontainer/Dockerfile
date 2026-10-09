@@ -1,7 +1,7 @@
 # AstraOS Yocto build container.
-# Based on Ubuntu 24.04 (LTS; check Wrynose host-distro support).
+# Based on Ubuntu 26.04 (LTS).
 
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 ARG USER_UID=1000
 ARG USER_GID=1000
@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         mesa-common-dev \
         libacl1 \
         zstd \
-        liblz4-tool \
+        lz4 \
         file \
         locales \
         sudo \
@@ -64,7 +64,7 @@ RUN curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo \
 # host user (overridable via build args) so bind-mounted files have correct
 # ownership. Passwordless sudo for one-off apt installs.
 #
-# Ubuntu 24.04 ships a default 'ubuntu' user at UID 1000 - remove it first
+# Ubuntu 24.04+ ships a default 'ubuntu' user at UID 1000 - remove it first
 # so our useradd --uid 1000 doesn't collide.
 RUN userdel -r ubuntu 2>/dev/null || true \
     && groupadd --gid ${USER_GID} ${USERNAME} \

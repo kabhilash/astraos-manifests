@@ -329,7 +329,7 @@ the server because it has the cores, RAM, and persistent caches).
 | CPU | 48 cores / 96 threads |
 | RAM | 1 TB |
 | Workspace path | `/home/akothapalli/yocto/astraos/` (NVMe-backed; sstate/downloads sit alongside under `/home/akothapalli/yocto/`) |
-| Builds run inside | the AstraOS devcontainer (Ubuntu 24.04, Yocto-supported) |
+| Builds run inside | the AstraOS devcontainer (Ubuntu 26.04) |
 
 `scripts/build` runs locally by default; `--remote` dispatches to this host,
 which is where practical builds belong. BB_NUMBER_THREADS and

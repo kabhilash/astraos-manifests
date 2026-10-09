@@ -32,7 +32,7 @@
     //                             cross-compile steps. (We do NOT build
     //                             qtwebengine/qtwebkit - lean SDK goal.)
     //   --security-opt apparmor=unconfined
-    //                           : Ubuntu 24.04 hosts default to
+    //                           : Ubuntu 24.04+ hosts default to
     //                             kernel.apparmor_restrict_unprivileged_userns=1
     //                             which blocks BitBake's `pseudo` (fakeroot
     //                             replacement) from creating unprivileged user
