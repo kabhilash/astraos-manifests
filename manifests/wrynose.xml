@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AstraOS google-repo manifest (Yocto Wrynose).
+
+  Pulls every layer needed to build either dev (raspberrypi5/raspberrypi-cm5-io-board/imx8mp-var-dart)
+  or production (astrax-variscite-imx8mp) image variants. The MACHINE-specific layer
+  selection happens in conf/bblayers.conf.in via scripts/setup-environment.
+
+  The NXP/Variscite stack is pinned verbatim to Variscite's reference manifest
+  for the L6.18.20_2.0.0 release:
+    varigit/variscite-bsp-platform @ refs/tags/mx8mp-yocto-wrynose-6.18.20_2.0.0-v1.0
+    (imx-6.18.20-2.0.0.xml)
+  Release notes:
+    https://dev.variscite.com/var-som-mx8m-plus/mx8mp-yocto-wrynose-6.18.20_2.0.0-v1.0/release-notes/
+
+  TODO: SHAs marked with revision="wrynose" should be pinned to specific
+  commits before production use.
+-->
+<manifest>
+
+  <remote name="yocto"     fetch="https://git.yoctoproject.org/"/>
+  <remote name="oe"        fetch="https://github.com/openembedded/"/>
+  <remote name="varigit"   fetch="https://github.com/varigit/"/>
+  <remote name="qt"        fetch="https://code.qt.io/yocto/"/>
+  <remote name="rauc"      fetch="https://github.com/rauc/"/>
+  <remote name="kabhilash" fetch="https://github.com/kabhilash/"/>
+  <!-- NXP i.MX BSP stack -->
+  <remote name="nxp-imx"   fetch="https://github.com/nxp-imx/"/>
+  <remote name="freescale" fetch="https://github.com/Freescale/"/>
+  <remote name="kraj"      fetch="https://github.com/kraj/"/>
+
+  <default revision="wrynose" remote="yocto" sync-j="4"/>
+
+  <!-- Yocto core (poky is split into its component repos, as in Variscite's manifest) -->
+  <project name="bitbake" path="sources/bitbake" remote="oe"
+           revision="fae9db3168dbff1b8c76fe9c6726a9687ff97514" upstream="2.18"/>
+  <project name="openembedded-core" path="sources/openembedded-core" remote="oe"
+           revision="f66b182e2ff431b624dfc3a506d25dc8f1fc6db2" upstream="wrynose"/>
+  <project name="meta-yocto" path="sources/meta-yocto" remote="yocto"
+           revision="824795b885b25e074a2880fbcd54e1a6c875d47d" upstream="wrynose"/>
+
+  <!-- OpenEmbedded -->
+  <project name="meta-openembedded" path="sources/meta-openembedded" remote="oe"
+           revision="af8b6d6b2f0b11595b0a0d5b82efa3129d52a628" upstream="wrynose"/>
+
+  <!-- Raspberry Pi BSP -->
+  <!-- TODO: pin SHA -->
+  <project name="meta-raspberrypi" path="sources/meta-raspberrypi" remote="yocto" revision="wrynose"/>
+
+  <!-- Qt 6.12.0 - meta-qt6 uses Qt-version branch names, not Yocto release names -->
+  <project name="meta-qt6" path="sources/meta-qt6" remote="qt"
+           revision="30756ca3c2d6e97554d68b283d994581b40602de" upstream="6.12.0"/>
+
+  <!-- RAUC update framework -->
+  <!-- TODO: pin SHA -->
+  <project name="meta-rauc" path="sources/meta-rauc" remote="rauc" revision="wrynose"/>
+
+  <!-- meta-security: provides packagegroup-security-tpm2 (meta-tpm sub-layer)
+       used by astraos-image-dev. -->
+  <project name="meta-security" path="sources/meta-security" remote="yocto"
+           revision="c0d1d6200e7a84c39fb940cb1f22aad4b0b3d808" upstream="wrynose"/>
+
+  <!-- NXP-side stack (fsl-bsp-release collection, toolchain bits, Freescale BSP, virt support). -->
+  <project name="meta-arm" path="sources/meta-arm" remote="yocto"
+           revision="4112fda50b814ad6e3cfaefe5cad78a83114599a" upstream="master"/>
+  <project name="meta-freescale" path="sources/meta-freescale" remote="freescale"
+           revision="fe38e65a09ccddf921a2ece98ac7af7b12df5183" upstream="wrynose"/>
+  <project name="meta-freescale-3rdparty" path="sources/meta-freescale-3rdparty" remote="freescale"
+           revision="26d8b36a72acf1458a2520e4e9f4d654a4ba77e4" upstream="wrynose"/>
+  <project name="meta-freescale-distro" path="sources/meta-freescale-distro" remote="freescale"
+           revision="4464f38b4aa618b5942f5e35dd25cff590f410a6" upstream="wrynose"/>
+  <project name="meta-freescale-ml" path="sources/meta-freescale-ml" remote="freescale"
+           revision="1330790bc6cdd3808260a16383d928e05a0e0eeb" upstream="wrynose"/>
+  <project name="meta-virtualization" path="sources/meta-virtualization" remote="yocto"
+           revision="022f4356d4a9b389f51472d40a9330aa59f6bb9a" upstream="master"/>
+  <project name="meta-clang" path="sources/meta-clang" remote="kraj"
+           revision="ef0d22f21910a0c30c967eeb17d8f209806e2d81" upstream="wrynose"/>
+  <project name="meta-imx" path="sources/meta-imx" remote="nxp-imx"
+           revision="refs/tags/rel_imx_6.18.20_2.0.0" upstream="wrynose-6.18.20-2.0.0"/>
+
+  <!-- Variscite layers (wrynose_var01 / wrynose_6.18.20_2.0.0_var01). -->
+  <project name="meta-variscite-bsp-common" path="sources/meta-variscite-bsp-common" remote="varigit"
+           revision="233fda88218170ad059f085c89c3620b686dafed" upstream="wrynose_var01"/>
+  <project name="meta-variscite-bsp-imx" path="sources/meta-variscite-bsp-imx" remote="varigit"
+           revision="0604d07ca40537c9c9e212ee237c7e9474f9996a" upstream="wrynose_6.18.20_2.0.0_var01"/>
+  <project name="meta-variscite-sdk-common" path="sources/meta-variscite-sdk-common" remote="varigit"
+           revision="69cf053f7c427b151cd0e5e86b91b73e1dacc270" upstream="wrynose_var01"/>
+  <project name="meta-variscite-sdk-imx" path="sources/meta-variscite-sdk-imx" remote="varigit"
+           revision="0b4c38c1fd1acf726ce0c1e6d7e7a49880f69bf4" upstream="wrynose_6.18.20_2.0.0_var01"/>
+  <!-- meta-variscite-hab provides HABv4 signing for production builds
+       (astrax-variscite-imx8mp). Synced unconditionally, wired into BBLAYERS
+       only by setup-environment when building production. -->
+  <project name="meta-variscite-hab" path="sources/meta-variscite-hab" remote="varigit"
+           revision="84c982942b4e41755cd93f1c34c33498c8e7a2d9" upstream="wrynose_var01"/>
+
+  <!-- Astra-owned layers (separate repos under github.com/kabhilash; SSH URLs).
+       The build machine needs an SSH key with read access to each repo (deploy
+       key, account-level key, or org-level key when these eventually move to
+       an Astra org). -->
+  <project name="meta-astrax"             path="sources/meta-astrax"             remote="kabhilash" revision="main"/>
+  <project name="meta-astrax-raspberrypi" path="sources/meta-astrax-raspberrypi" remote="kabhilash" revision="main"/>
+  <project name="meta-astrax-variscite"   path="sources/meta-astrax-variscite"   remote="kabhilash" revision="main"/>
+
+</manifest>

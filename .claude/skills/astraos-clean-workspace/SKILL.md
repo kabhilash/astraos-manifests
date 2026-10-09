@@ -21,7 +21,7 @@ What happens behind the scenes (no need to repeat each step manually):
 1. SSH to `akothapalli@10.11.12.20`
 2. `rm -rf /home/akothapalli/yocto/astraos`
 3. `git clone https://github.com/kabhilash/astraos-manifests.git /home/akothapalli/yocto/astraos`
-4. `repo init -u https://github.com/kabhilash/astraos-manifests.git -m manifests/default.xml`
+4. `repo init -u https://github.com/kabhilash/astraos-manifests.git -m manifests/wrynose.xml`
 5. `repo sync -j16`
 
 `/home/akothapalli/yocto/sstate` and `/home/akothapalli/yocto/downloads`
@@ -35,4 +35,4 @@ For a fresh `sources/` on a **local** checkout this skill is not needed:
 `./scripts/build --local --force-resync <subcommand> ...` re-runs
 `repo init` + `repo sync --force-checkout --detach` (detached HEADs; any
 uncommitted edits in `sources/*` are listed, then discarded after a 10s
-Ctrl+C window), and a missing `sources/poky` is fetched automatically.
+Ctrl+C window), and a missing `sources/openembedded-core` is fetched automatically.

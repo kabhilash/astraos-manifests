@@ -1,5 +1,5 @@
 # AstraOS Yocto build container.
-# Based on Ubuntu 24.04 (LTS; supported by current Scarthgap point releases).
+# Based on Ubuntu 24.04 (LTS; check Wrynose host-distro support).
 
 FROM ubuntu:24.04
 
@@ -9,7 +9,7 @@ ARG USERNAME=builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Yocto Scarthgap host deps (from Yocto Project Reference Manual,
+# Yocto Wrynose host deps (from Yocto Project Reference Manual,
 # "Required Packages for the Build Host"). Plus a few quality-of-life
 # tools (vim, less, rsync, sudo) and ca-certificates for HTTPS fetches.
 RUN apt-get update && apt-get install -y --no-install-recommends \

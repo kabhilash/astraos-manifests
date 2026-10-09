@@ -36,7 +36,7 @@ Prerequisites: Docker, and `repo` on `PATH`. Local builds are slow; the
 build machine has far more cores (see `docs/ARCHITECTURE.md`, Build
 Machine).
 
-- **Layers.** If `sources/poky` is missing the script runs `repo init` and
+- **Layers.** If `sources/openembedded-core` is missing the script runs `repo init` and
   `repo sync` in the checkout first. `--force-resync` re-runs
   `repo init` and `repo sync --force-checkout --detach` even when `sources/` exists
   (`scripts/build --force-resync dev-image ...`). `--force-checkout`

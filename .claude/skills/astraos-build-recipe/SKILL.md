@@ -77,7 +77,7 @@ first), so push script or layer changes before a remote build.
 
 For local runs:
 
-- missing `sources/poky` is fetched automatically (`repo init` +
+- missing `sources/openembedded-core` is fetched automatically (`repo init` +
   `repo sync`); add `--force-resync` to re-run `repo init` + `repo sync --force-checkout --detach`
   on an existing `sources/`: every project goes back to its manifest
   revision on a detached HEAD, and uncommitted edits there are

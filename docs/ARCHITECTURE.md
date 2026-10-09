@@ -51,9 +51,9 @@ adding anything to `IMAGE_INSTALL`, `TOOLCHAIN_TARGET_TASK`, or
 
 | Item | Choice |
 |---|---|
-| Yocto release | Scarthgap 5.0 LTS (supported until April 2028) |
+| Yocto release | Wrynose |
 | Source layout | google-repo, manifest in this repo (`manifests/*.xml`) |
-| Variscite BSP | NXP L6.6.52_2.2.2 (`mx8mp-yocto-scarthgap-6.6.y_2.2.2-v1.2`) |
+| Variscite BSP | NXP L6.18.20_2.0.0 (`mx8mp-yocto-wrynose-6.18.20_2.0.0-v1.0`) |
 | DISTRO | `astraos` defined in `meta-astrax/conf/distro/astraos.conf` |
 | Init system | systemd |
 | Package format | `package_rpm`; runtime `dnf`/`rpm` in dev image only |
@@ -105,7 +105,7 @@ layer only if the app outgrows ~10 recipes or a separate team takes ownership.
 | Item | Choice |
 |---|---|
 | UI architecture | Transitioning from Windows-PC UI (over WebSocket) to on-device Qt HMI |
-| Qt version | 6.8.3 (LTS) |
+| Qt version | 6.12.0 |
 | Display server | None — Qt EGLFS direct to DRM/KMS |
 | GPU on i.MX8M Plus | Vivante (`imx-gpu-viv`), Qt `eglfs_kms_imx` |
 | GPU on RPi | V3D mesa (only option) |
@@ -279,8 +279,8 @@ Two image recipes in `meta-astrax/recipes-images/` sharing a base:
   build astrax-bt` → `devtool deploy-target astrax-bt root@<dev-ip>`
 
 The exported Yocto SDK includes:
-- Qt 6.8.3 cross sysroot
-- `nativesdk-rust` + `nativesdk-cargo` (latest Rust via `meta-lts-mixins/scarthgap/rust`)
+- Qt 6.12.0 cross sysroot
+- `nativesdk-rust` + `nativesdk-cargo`
 - protobuf, sqlite3, bluez5 dev headers
 
 ## Compliance & Release Engineering
@@ -416,7 +416,7 @@ when the time comes.
 ## Source-of-Truth Pointers
 
 - Variscite BSP release notes:
-  https://dev.variscite.com/var-som-mx8m-plus/mx8mp-yocto-scarthgap-6.6.y_2.2.2-v1.2/release-notes/
+  https://dev.variscite.com/var-som-mx8m-plus/mx8mp-yocto-wrynose-6.18.20_2.0.0-v1.0/release-notes/
 - AstraOS (this repo): `https://github.com/kabhilash/astraos-manifests.git`
 - `meta-astrax`: `https://github.com/kabhilash/meta-astrax.git`
 - `meta-astrax-raspberrypi`: `https://github.com/kabhilash/meta-astrax-raspberrypi.git`
@@ -427,8 +427,6 @@ when the time comes.
   the build machine's SSH key has read access)
   - Architecture doc: `astraX_BT/Docs/ARCHITECTURE.md`
   - Service discovery: `astraX_BT/Docs/SERVICE_DISCOVERY.md`
-- meta-qt6 (need SRCREV that ships Qt 6.8.3 on Scarthgap):
-  https://code.qt.io/cgit/yocto/meta-qt6.git/log/?h=scarthgap
-- meta-lts-mixins (rust branch for latest Rust on Scarthgap):
-  https://git.yoctoproject.org/meta-lts-mixins/log/?h=scarthgap/rust
+- meta-qt6 (Qt 6.12.0, pinned to tag v6.12.0):
+  https://code.qt.io/cgit/yocto/meta-qt6.git/log/?h=6.12.0
 - meta-rauc, meta-rauc-community: TBD pinning during RAUC integration
