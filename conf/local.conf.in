@@ -82,8 +82,8 @@ BB_SIGNATURE_HANDLER = "OEEquivHash"
 # Trade-off: native/cross tools rebuild per MACHINE (some duplication);
 # wins are clean per-machine wipe and zero risk of cross-MACHINE state
 # bleed. DL_DIR stays shared (source tarballs are machine-independent).
-SSTATE_DIR ?= "/home/akothapalli/yocto/sstate/${MACHINE}"
-DL_DIR     ?= "/home/akothapalli/yocto/downloads"
+SSTATE_DIR ?= "/cache/sstate/${MACHINE}"
+DL_DIR     ?= "/cache/downloads"
 
 # LICENSE_FLAGS_ACCEPTED is set in meta-astrax/conf/distro/astraos.conf -
 # don't shadow it here. (Earlier this file hard-set the variable, which

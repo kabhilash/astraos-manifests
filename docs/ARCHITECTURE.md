@@ -328,7 +328,7 @@ the server because it has the cores, RAM, and persistent caches).
 | Host OS | Ubuntu 26.04 |
 | CPU | 48 cores / 96 threads |
 | RAM | 1 TB |
-| Workspace path | `/home/akothapalli/yocto/astraos/` (NVMe-backed; sstate/downloads sit alongside under `/home/akothapalli/yocto/`) |
+| Workspace path | `/home/akothapalli/yocto/astraos/` (NVMe-backed; sstate/downloads sit alongside under `/home/akothapalli/yocto/`). Inside the build container the checkout is always `/workspace` and the caches `/cache/{sstate,downloads}` |
 | Builds run inside | the AstraOS devcontainer (Ubuntu 24.04 for Scarthgap, 26.04 for Wrynose) |
 
 `scripts/build` runs on whichever host invokes it; for practical builds,

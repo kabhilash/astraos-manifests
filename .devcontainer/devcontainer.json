@@ -8,23 +8,23 @@
         }
     },
 
-    "workspaceFolder": "/home/akothapalli/yocto/astraos",
-    "workspaceMount": "source=${localWorkspaceFolder},target=/home/akothapalli/yocto/astraos,type=bind,consistency=cached",
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
 
-    // sstate-cache and downloads at /home/akothapalli/yocto/{sstate,downloads}
+    // sstate-cache and downloads at /cache/{sstate,downloads}
     // (matching local.conf.in). scripts/build bind-mounts host folders there;
     // in a VS Code devcontainer they are named volumes that survive container
     // rebuilds.
     "mounts": [
-        "source=astraos-sstate-wrynose,target=/home/akothapalli/yocto/sstate,type=volume",
-        "source=astraos-downloads-wrynose,target=/home/akothapalli/yocto/downloads,type=volume"
+        "source=astraos-sstate-wrynose,target=/cache/sstate,type=volume",
+        "source=astraos-downloads-wrynose,target=/cache/downloads,type=volume"
     ],
 
     "remoteUser": "builder",
     "containerUser": "builder",
 
     // Yocto and bind-mount safety
-    "postCreateCommand": "sudo chown builder:builder /workspaces/sstate-cache /workspaces/downloads && git config --global --add safe.directory '*'",
+    "postCreateCommand": "sudo chown builder:builder /cache/sstate /cache/downloads && git config --global --add safe.directory '*'",
 
     // runArgs:
     //   --shm-size=2g           : default 64 MB is too small for some Qt6
@@ -62,8 +62,8 @@
                 "files.watcherExclude": {
                     "**/build-*/**": true,
                     "**/sources/**": true,
-                    "/home/akothapalli/yocto/sstate/**": true,
-                    "/home/akothapalli/yocto/downloads/**": true
+                    "/cache/sstate/**": true,
+                    "/cache/downloads/**": true
                 }
             }
         }

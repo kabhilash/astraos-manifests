@@ -142,13 +142,13 @@ _run() {
         # ${ASTRAOS_DL_DIR}, default ~/yocto/downloads-<codename>. Both are created
         # here (as the calling user) so docker doesn't create them
         # root-owned. local.conf.in references
-        # /home/akothapalli/yocto/{sstate,downloads} inside the container
+        # /cache/{sstate,downloads} inside the container
         # regardless of the host source.
         local sstate_src="${ASTRAOS_SSTATE_DIR:-${INVOCATION_PWD}/sstate-${YOCTO_CODENAME}}"
         local dl_src="${ASTRAOS_DL_DIR:-${HOME}/yocto/downloads-${YOCTO_CODENAME}}"
         mkdir -p "${sstate_src}" "${dl_src}"
-        local sstate_mount="-v ${sstate_src}:/home/akothapalli/yocto/sstate"
-        local dl_mount="-v ${dl_src}:/home/akothapalli/yocto/downloads"
+        local sstate_mount="-v ${sstate_src}:/cache/sstate"
+        local dl_mount="-v ${dl_src}:/cache/downloads"
         # The workspace is this checkout.
         local workspace_src="${ASTRAOS_ROOT}"
         # Bind host's ~/.ssh read-only into the container so bitbake's git
@@ -168,7 +168,7 @@ _run() {
             docker_tty="-it"
         fi
         docker run --rm ${docker_tty} \
-            -v "${workspace_src}:/home/akothapalli/yocto/astraos" \
+            -v "${workspace_src}:/workspace" \
             -e "ASTRAOS_HOST_ROOT=${workspace_src}" \
             ${sstate_mount} \
             ${dl_mount} \
@@ -176,7 +176,7 @@ _run() {
             --shm-size=2g \
             --security-opt apparmor=unconfined \
             --security-opt seccomp=unconfined \
-            -w /home/akothapalli/yocto/astraos \
+            -w /workspace \
             "${IMAGE_TAG}" \
             bash -lc "${cmd}"
     fi

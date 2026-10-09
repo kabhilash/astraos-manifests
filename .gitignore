@@ -5,3 +5,4 @@ meta-*
 /build-*/
 /sstate*/
 /feeds/
+/.bash_history

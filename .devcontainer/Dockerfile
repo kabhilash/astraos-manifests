@@ -73,11 +73,17 @@ RUN userdel -r ubuntu 2>/dev/null || true \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
 
+# In-container layout: the checkout is mounted at /workspace, the sstate and
+# downloads caches at /cache/{sstate,downloads}. Pre-created and owned by
+# the build user so named volumes (VS Code devcontainer) start out writable.
+RUN mkdir -p /workspace /cache/sstate /cache/downloads \
+    && chown ${USER_UID}:${USER_GID} /workspace /cache /cache/sstate /cache/downloads
+
 USER ${USERNAME}
-WORKDIR /home/akothapalli/yocto/astraos
+WORKDIR /workspace
 
 # Helpful shell history persistence in the workspace
-RUN echo 'export HISTFILE=/home/akothapalli/yocto/.bash_history' >> ~/.bashrc \
+RUN echo 'export HISTFILE=/workspace/.bash_history' >> ~/.bashrc \
     && echo 'export HISTSIZE=10000 HISTFILESIZE=20000' >> ~/.bashrc
 
 CMD ["/bin/bash"]
