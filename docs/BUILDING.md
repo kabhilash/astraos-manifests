@@ -50,8 +50,8 @@ Machine).
   revision; commits on local branches are kept in those branches.
   This runs on the host, so your git/SSH access to the layer remotes
   applies.
-- **Caches.** `sstate/` goes in the directory you launch the script from
-  (`ASTRAOS_SSTATE_DIR` to override); downloads go to `~/yocto/downloads`
+- **Caches.** `sstate-<codename>/` (e.g. `sstate-wrynose/`) goes in the directory you launch the script from
+  (`ASTRAOS_SSTATE_DIR` to override); downloads go to `~/yocto/downloads-<codename>`
   (`ASTRAOS_DL_DIR`). Launch from the same directory each time to keep the
   cache warm.
 - **Workspace.** The build dir is `build-<MACHINE>/` in the checkout
@@ -75,14 +75,14 @@ scripts/build --remote prod-image                    # mcb, production
 
 The script ssh-es to `akothapalli@10.11.12.20`, then on the builder:
 
-1. creates `sstate/` and `downloads/` and, if the workspace is missing,
+1. creates `sstate-<codename>/` and `downloads-<codename>/` and, if the workspace is missing,
    clones it and runs `repo init` + `repo sync`;
 2. runs `git pull --ff-only` (retried 3x) and `repo sync` in the workspace;
 3. re-runs `scripts/build --local ...` there.
 
 Because of step 2, **the builder builds what is on GitHub `main`, not your
 working tree.** Commit and push script/layer changes before a remote build.
-The builder keeps its sstate at `/home/akothapalli/yocto/sstate`.
+The builder keeps its sstate at `/home/akothapalli/yocto/sstate-wrynose`.
 
 Fetching the result, matching the build you ran:
 

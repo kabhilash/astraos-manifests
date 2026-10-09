@@ -44,7 +44,7 @@ ask which one before running. The four valid options are listed above.
 - First-time builds for a given MACHINE take ~1–2 hours (cold sstate);
   subsequent builds are far faster thanks to the per-MACHINE sstate
   cache (`<sstate dir>/<MACHINE>/`; on the build machine
-  `/home/akothapalli/yocto/sstate`).
+  `/home/akothapalli/yocto/sstate-wrynose`).
 - Both Variscite MACHINEs build the dev image: `imx8mp-var-dart`
   (Symphony) and `astrax-variscite-imx8mp` (mcb). Only mcb has a
   production image.
@@ -66,9 +66,9 @@ For local runs:
   discarded. If any exist they are listed in a warning banner followed
   by a 10s Ctrl+C window. Only pass `--force-resync` when the user asks
   for it — an agent cannot press Ctrl+C
-- sstate lives in `./sstate` of the directory the script is launched
+- sstate lives in `./sstate-<codename>` (e.g. `sstate-wrynose`) of the directory the script is launched
   from (`ASTRAOS_SSTATE_DIR` to override), downloads in
-  `~/yocto/downloads` (`ASTRAOS_DL_DIR`) — launch from the same
+  `~/yocto/downloads-<codename>` (`ASTRAOS_DL_DIR`) — launch from the same
   directory each time to keep the cache warm
 - the build dir is `build-<MACHINE>/` inside the checkout
 

@@ -1,6 +1,6 @@
 ---
 name: astraos-clean-workspace
-description: Wipe `/home/akothapalli/yocto/astraos` on the AstraOS build machine and re-bootstrap from GitHub (`kabhilash/astraos-manifests`) via `repo init` + `repo sync`. Use whenever the user asks to "clean the workspace", "wipe the build server", "reset astraos", "fresh checkout", "nuke the workspace", "start from scratch on the builder", or any phrasing that implies a full workspace reset. Preserves `/home/akothapalli/yocto/{sstate,downloads}` so the next build is fast (caches still warm). Do NOT use this for routine BitBake `cleansstate` or `clean` invocations on a single recipe — those are a different operation; use `astraos-build-recipe` with task `cleansstate` instead.
+description: Wipe `/home/akothapalli/yocto/astraos` on the AstraOS build machine and re-bootstrap from GitHub (`kabhilash/astraos-manifests`) via `repo init` + `repo sync`. Use whenever the user asks to "clean the workspace", "wipe the build server", "reset astraos", "fresh checkout", "nuke the workspace", "start from scratch on the builder", or any phrasing that implies a full workspace reset. Preserves `/home/akothapalli/yocto/{sstate,downloads}-<codename>` (e.g. `sstate-wrynose`) so the next build is fast (caches still warm). Do NOT use this for routine BitBake `cleansstate` or `clean` invocations on a single recipe — those are a different operation; use `astraos-build-recipe` with task `cleansstate` instead.
 ---
 
 Run the clean subcommand of the AstraOS build script:
@@ -24,7 +24,7 @@ What happens behind the scenes (no need to repeat each step manually):
 4. `repo init -u https://github.com/kabhilash/astraos-manifests.git -m manifests/wrynose.xml`
 5. `repo sync -j16`
 
-`/home/akothapalli/yocto/sstate` and `/home/akothapalli/yocto/downloads`
+`/home/akothapalli/yocto/sstate-wrynose` and `/home/akothapalli/yocto/downloads-wrynose`
 are preserved across the wipe. After the clean completes, the user can
 immediately invoke any of the other `./scripts/build` subcommands.
 

@@ -17,8 +17,8 @@
     // devcontainer on a Mac these are named volumes that survive container
     // rebuilds.
     "mounts": [
-        "source=astraos-sstate,target=/home/akothapalli/yocto/sstate,type=volume",
-        "source=astraos-downloads,target=/home/akothapalli/yocto/downloads,type=volume"
+        "source=astraos-sstate-wrynose,target=/home/akothapalli/yocto/sstate,type=volume",
+        "source=astraos-downloads-wrynose,target=/home/akothapalli/yocto/downloads,type=volume"
     ],
 
     "remoteUser": "builder",

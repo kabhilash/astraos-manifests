@@ -33,11 +33,12 @@
 #   ASTRAOS_BUILDER_USER=akothapalli
 #   ASTRAOS_BUILDER_PORT=22
 #   ASTRAOS_BUILDER_PATH=/home/akothapalli/yocto/astraos  (--local: defaults to this checkout)
-#   ASTRAOS_BUILDER_HOST_ROOT=/home/akothapalli/yocto  (builder's sstate/ lives here)
+#   ASTRAOS_BUILDER_HOST_ROOT=/home/akothapalli/yocto  (builder's sstate-<codename>/ lives here)
 #
 # Cache dirs for --local runs (bind-mounted into the container):
-#   ASTRAOS_SSTATE_DIR=<dir you launch the script from>/sstate
-#   ASTRAOS_DL_DIR=$HOME/yocto/downloads
+#   ASTRAOS_SSTATE_DIR=<dir you launch the script from>/sstate-<codename>
+#   ASTRAOS_DL_DIR=$HOME/yocto/downloads-<codename>
+# (<codename> is the Yocto release of MANIFEST below, e.g. wrynose.)
 #
 # Dev rpm feed ('publish'; see docs/ARCHITECTURE.md "Dev package feed"):
 #   ASTRAOS_FEED_ROOT   local (default): an absolute path, or relative to the
@@ -57,22 +58,24 @@ set -euo pipefail
 
 ASTRAOS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INVOCATION_PWD="${PWD}"   # captured before any later cd; used by 'download-dev'/'download-prod'
-# Manifest every repo init uses. The builder image is tagged after the Yocto
-# release it pins, so checkouts of different releases can share one Docker
-# daemon: wrynose.xml -> astraos-builder:wrynose; the Scarthgap manifest
-# (default.xml) keeps astraos-builder:latest.
+# Manifest every repo init uses, and the Yocto codename it pins. Both the
+# builder image tag and the host-side sstate/downloads folders follow the
+# codename, so checkouts of different releases can share one machine without
+# overwriting each other's image or mixing caches: wrynose.xml ->
+# astraos-builder:wrynose, sstate-wrynose/, downloads-wrynose/; the Scarthgap
+# manifest (default.xml) keeps astraos-builder:latest.
 MANIFEST="manifests/wrynose.xml"
 case "$(basename "${MANIFEST}" .xml)" in
-    wrynose)            IMAGE_TAG="astraos-builder:wrynose" ;;
-    scarthgap|default)  IMAGE_TAG="astraos-builder:latest" ;;
-    *) echo "ERROR: no builder image tag for ${MANIFEST}" >&2; exit 1 ;;
+    wrynose)            YOCTO_CODENAME="wrynose";   IMAGE_TAG="astraos-builder:wrynose" ;;
+    scarthgap|default)  YOCTO_CODENAME="scarthgap"; IMAGE_TAG="astraos-builder:latest" ;;
+    *) echo "ERROR: no Yocto codename for ${MANIFEST}" >&2; exit 1 ;;
 esac
 
 BUILDER_HOST="${ASTRAOS_BUILDER_HOST:-10.11.12.20}"
 BUILDER_USER="${ASTRAOS_BUILDER_USER:-akothapalli}"
 BUILDER_PORT="${ASTRAOS_BUILDER_PORT:-22}"
 BUILDER_PATH="${ASTRAOS_BUILDER_PATH:-/home/akothapalli/yocto/astraos}"
-# Parent dir on host: holds astraos/, sstate/, downloads/. /yocto/ used to
+# Parent dir on host: holds astraos/, sstate-<codename>/, downloads-<codename>/. /yocto/ used to
 # live on a spinning disk; we now keep everything under the user's NVMe-
 # backed home to avoid build I/O contention.
 BUILDER_HOST_ROOT="${ASTRAOS_BUILDER_HOST_ROOT:-$(dirname "${BUILDER_PATH}")}"
@@ -100,7 +103,7 @@ AstraOS build helper.
 
 Usage (most subcommands accept optional --local | --remote and --force-resync prefixes):
   scripts/build container                              Rebuild the devcontainer image
-  scripts/build clean                                  Wipe ${BUILDER_PATH} on builder + repo sync (sstate/downloads preserved)
+  scripts/build clean                                  Wipe ${BUILDER_PATH} on builder + repo sync (sstate-${YOCTO_CODENAME}/, downloads-${YOCTO_CODENAME}/ preserved)
   scripts/build dev-image   <MACHINE>                  Build astraos-image-dev for MACHINE
   scripts/build prod-image                             Build astraos-image (mcb production)
   scripts/build sdk         <MACHINE>                  Build astraos-sdk for MACHINE
@@ -177,15 +180,15 @@ _run() {
         bash -c "${cmd}"
     else
         _ensure_image
-        # sstate cache: ${ASTRAOS_SSTATE_DIR}, default ./sstate under the
-        # directory the script was launched from. Downloads:
-        # ${ASTRAOS_DL_DIR}, default ~/yocto/downloads. Both are created
+        # sstate cache: ${ASTRAOS_SSTATE_DIR}, default ./sstate-<codename>
+        # under the directory the script was launched from. Downloads:
+        # ${ASTRAOS_DL_DIR}, default ~/yocto/downloads-<codename>. Both are created
         # here (as the calling user) so docker doesn't create them
         # root-owned. local.conf.in references
         # /home/akothapalli/yocto/{sstate,downloads} inside the container
         # regardless of the host source.
-        local sstate_src="${ASTRAOS_SSTATE_DIR:-${INVOCATION_PWD}/sstate}"
-        local dl_src="${ASTRAOS_DL_DIR:-${HOME}/yocto/downloads}"
+        local sstate_src="${ASTRAOS_SSTATE_DIR:-${INVOCATION_PWD}/sstate-${YOCTO_CODENAME}}"
+        local dl_src="${ASTRAOS_DL_DIR:-${HOME}/yocto/downloads-${YOCTO_CODENAME}}"
         mkdir -p "${sstate_src}" "${dl_src}"
         local sstate_mount="-v ${sstate_src}:/home/akothapalli/yocto/sstate"
         local dl_mount="-v ${dl_src}:/home/akothapalli/yocto/downloads"
@@ -492,7 +495,7 @@ if [ "${1:-}" = "clean" ]; then
         exit 1
     fi
     echo ">>> wiping ${BUILDER_PATH} on ${BUILDER_USER}@${BUILDER_HOST} and re-bootstrapping from GitHub"
-    echo ">>> ${BUILDER_HOST_ROOT}/{sstate,downloads} preserved"
+    echo ">>> ${BUILDER_HOST_ROOT}/{sstate,downloads}-${YOCTO_CODENAME} preserved"
     if [ -t 0 ] && [ -t 1 ]; then
         clean_ssh_tty="-t"
     else
@@ -556,7 +559,7 @@ if [ "${MODE}" = "remote" ]; then
     # absent. This means a brand-new builder (or one where the user
     # rm-rf'd the workspace) recovers automatically on the next build
     # command - no separate `clean` call required.
-    bootstrap_step="mkdir -p \"${BUILDER_HOST_ROOT}/sstate\" \"${BUILDER_HOST_ROOT}/downloads\" && if [ ! -d \"${BUILDER_PATH}/.git\" ]; then echo \">>> bootstrapping workspace at ${BUILDER_PATH}\" && git clone \"${ASTRAOS_GIT_URL}\" \"${BUILDER_PATH}\" && cd \"${BUILDER_PATH}\" && repo init -u \"${ASTRAOS_GIT_URL}\" -m \"${MANIFEST}\" --no-clone-bundle && repo sync -j16 --no-clone-bundle; fi &&"
+    bootstrap_step="mkdir -p \"${BUILDER_HOST_ROOT}/sstate-${YOCTO_CODENAME}\" \"${BUILDER_HOST_ROOT}/downloads-${YOCTO_CODENAME}\" && if [ ! -d \"${BUILDER_PATH}/.git\" ]; then echo \">>> bootstrapping workspace at ${BUILDER_PATH}\" && git clone \"${ASTRAOS_GIT_URL}\" \"${BUILDER_PATH}\" && cd \"${BUILDER_PATH}\" && repo init -u \"${ASTRAOS_GIT_URL}\" -m \"${MANIFEST}\" --no-clone-bundle && repo sync -j16 --no-clone-bundle; fi &&"
     # Always pull AstraOS to pick up Dockerfile / scripts / manifest
     # changes before any subcommand runs. Container previously skipped
     # this and built against a stale .devcontainer/Dockerfile.
@@ -586,10 +589,10 @@ if [ "${MODE}" = "remote" ]; then
     # hop; nothing else the remote --local invocation reads is forwarded
     # this way (it either has its own remote-side default, like
     # BUILDER_PATH, or doesn't need one).
-    # The builder keeps its sstate beside downloads/ under BUILDER_HOST_ROOT
+    # The builder keeps its sstate beside downloads-<codename>/ under BUILDER_HOST_ROOT
     # (not under its cwd, which is the workspace); pin it there so the
     # --local default above doesn't move the warm cache.
-    remote_env="ASTRAOS_SSTATE_DIR=$(printf '%q' "${ASTRAOS_SSTATE_DIR:-${BUILDER_HOST_ROOT}/sstate}") "
+    remote_env="ASTRAOS_SSTATE_DIR=$(printf '%q' "${ASTRAOS_SSTATE_DIR:-${BUILDER_HOST_ROOT}/sstate-${YOCTO_CODENAME}}") "
     if [ "${1:-}" = "publish" ]; then
         remote_env="${remote_env}ASTRAOS_FEED_ROOT=$(printf '%q' "${ASTRAOS_FEED_ROOT}") "
     fi
