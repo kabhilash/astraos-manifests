@@ -30,7 +30,7 @@
 #   ASTRAOS_BUILDER_HOST=10.11.12.20
 #   ASTRAOS_BUILDER_USER=akothapalli
 #   ASTRAOS_BUILDER_PORT=22
-#   ASTRAOS_BUILDER_PATH=/home/akothapalli/yocto/astraos
+#   ASTRAOS_BUILDER_PATH=/home/akothapalli/yocto/astraos  (--local: defaults to this checkout)
 #   ASTRAOS_BUILDER_HOST_ROOT=/home/akothapalli/yocto  (parent of sstate/downloads on host)
 #
 # Dev rpm feed ('publish'; see docs/ARCHITECTURE.md "Dev package feed"):
@@ -76,12 +76,13 @@ FEED_NGINX_IMAGE="nginx:1.27-alpine"
 ASTRAOS_GIT_URL="${ASTRAOS_GIT_URL:-https://github.com/kabhilash/astraos-manifests.git}"
 
 MODE=""    # auto by default; set by --local / --remote
+FORCE_RESYNC=0   # set by --force-resync
 
 usage() {
     cat <<EOF
 AstraOS build helper.
 
-Usage (most subcommands accept an optional --local | --remote prefix):
+Usage (most subcommands accept optional --local | --remote and --force-resync prefixes):
   scripts/build container                              Rebuild the devcontainer image
   scripts/build clean                                  Wipe ${BUILDER_PATH} on builder + repo sync (sstate/downloads preserved)
   scripts/build image       <MACHINE>                  Build astraos-image-dev for MACHINE
@@ -101,6 +102,11 @@ MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-vari
 Default mode: --remote, dispatches via ssh to the build machine
   ${BUILDER_USER}@${BUILDER_HOST}:${BUILDER_PORT} (path: ${BUILDER_PATH})
 Pass --local to run on the local Docker daemon instead.
+
+--local fetches the layers (repo init + repo sync in ${ASTRAOS_ROOT}) when
+sources/poky is missing. --force-resync re-runs repo sync even if sources/
+exists. Over --remote the builder is already synced on every dispatch, so
+the flag is a no-op there.
 EOF
     exit 1
 }
@@ -203,6 +209,26 @@ _run() {
             "${IMAGE_TAG}" \
             bash -lc "${cmd}"
     fi
+}
+
+# Fetch the Yocto layers into ${ASTRAOS_ROOT}/sources when they're missing,
+# or re-sync them on request. Runs on the host (needs repo + git/ssh access
+# to the layer remotes), before the container is entered. Mirrors the
+# builder bootstrap in the --remote dispatch below.
+_ensure_sources() {
+    if [ -d "${ASTRAOS_ROOT}/sources/poky" ] && [ "${FORCE_RESYNC}" != 1 ]; then
+        return 0
+    fi
+    if ! command -v repo >/dev/null 2>&1; then
+        echo "ERROR: 'repo' not found on PATH; needed to fetch ${ASTRAOS_ROOT}/sources" >&2
+        exit 1
+    fi
+    if [ ! -d "${ASTRAOS_ROOT}/.repo" ]; then
+        echo ">>> repo init in ${ASTRAOS_ROOT}"
+        (cd "${ASTRAOS_ROOT}" && repo init -u "${ASTRAOS_GIT_URL}" -m manifests/default.xml --no-clone-bundle)
+    fi
+    echo ">>> repo sync in ${ASTRAOS_ROOT}"
+    (cd "${ASTRAOS_ROOT}" && repo sync -j16 --no-clone-bundle)
 }
 
 # Validate MACHINE is one of the four known targets
@@ -316,11 +342,15 @@ case "${1:-}" in
     ""|-h|--help|help) usage ;;
 esac
 
-# Parse leading mode flag if present
-case "${1:-}" in
-    --local)  MODE=local;  shift ;;
-    --remote) MODE=remote; shift ;;
-esac
+# Parse leading flags (any order)
+while :; do
+    case "${1:-}" in
+        --local)        MODE=local;  shift ;;
+        --remote)       MODE=remote; shift ;;
+        --force-resync) FORCE_RESYNC=1; shift ;;
+        *) break ;;
+    esac
+done
 
 # Re-check after mode flag consumption
 case "${1:-}" in
@@ -423,6 +453,15 @@ fi
 # 'container' skips the sync (it doesn't depend on a fresh workspace and
 # building a container is itself a setup step you might run before the
 # workspace exists).
+# --local runs execute in this checkout, so unless overridden the workspace
+# is the checkout itself rather than the builder's path above (which only
+# means something on the far side of the ssh hop). 'download' and 'clean'
+# are builder-only and have already run by this point.
+if [ "${MODE}" = "local" ]; then
+    BUILDER_PATH="${ASTRAOS_BUILDER_PATH:-${ASTRAOS_ROOT}}"
+    BUILDER_HOST_ROOT="${ASTRAOS_BUILDER_HOST_ROOT:-$(dirname "${BUILDER_PATH}")}"
+fi
+
 if [ "${MODE}" = "remote" ]; then
     # publish writes outside ${BUILDER_PATH} (so `scripts/build clean`,
     # which rm -rf's ${BUILDER_PATH}, can't take the feed with it). On this
@@ -487,6 +526,11 @@ fi
 
 cmd="${1:-}"
 shift || true
+
+# Subcommands that enter the build env need the layers in sources/.
+case "${cmd}" in
+    image|prod-image|sdk|recipe|bitbake|shell|publish) _ensure_sources ;;
+esac
 
 case "${cmd}" in
     container)
