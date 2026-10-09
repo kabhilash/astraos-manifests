@@ -285,11 +285,12 @@ The exported Yocto SDK includes:
 
 ## Compliance & Release Engineering
 
-In `astraos.conf`:
+In `astraos.conf` (`create-spdx` and `cve-check` are inherited for prod
+builds only, from `conf/local.conf.in`; SPDX documents do not embed sources):
 
 ```
-INHERIT += "create-spdx archiver cve-check"
-SPDX_INCLUDE_SOURCES = "1"
+INHERIT_DISTRO:remove = "create-spdx"
+INHERIT += "archiver"
 ARCHIVER_MODE[src] = "patched"
 LICENSE_CREATE_PACKAGE = "1"
 COPY_LIC_MANIFEST = "1"
