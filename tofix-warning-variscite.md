@@ -1,6 +1,6 @@
 # Variscite build warnings — TODO
 
-Warnings emitted by `scripts/build image imx8mp-var-dart`. None are
+Warnings emitted by `scripts/build dev-image imx8mp-var-dart`. None are
 fatal; the build proceeds. Capture them here so we can address each
 deliberately rather than letting them rot.
 

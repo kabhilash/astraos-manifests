@@ -42,7 +42,7 @@ Full walkthrough: `docs/BUILDING.md`.
   in the checkout.
 - `--remote` build: `scripts/build download-prod [<dest>]` scp's the
   production wic from the build machine (it matches `prod-image`, just
-  as `download <MACHINE>` matches the dev image build).
+  as `download-dev <MACHINE>` matches the dev image build).
 
 ## When this is the wrong skill
 

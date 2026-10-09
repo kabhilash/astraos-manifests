@@ -8,7 +8,7 @@ chosen MACHINE:
 
 ```
 # from the repo root (the astraos-manifests checkout)
-./scripts/build image <MACHINE>
+./scripts/build dev-image <MACHINE>
 ```
 
 ## Extracting MACHINE from the user's request
@@ -38,8 +38,8 @@ ask which one before running. The four valid options are listed above.
 - The image lands in `build-<MACHINE>/tmp-<MACHINE>/deploy/images/<MACHINE>/`
   (`astraos-image-dev-<MACHINE>.rootfs.wic.zst`) in the checkout. For a
   `--remote` build it is in `/home/akothapalli/yocto/astraos/` on the
-  build machine instead, and `scripts/build download <MACHINE> [<dest>]`
-  scp's the dev wic to the user's box. (`download` is the dev-image
+  build machine instead, and `scripts/build download-dev <MACHINE> [<dest>]`
+  scp's the dev wic to the user's box. (`download-dev` is the dev-image
   counterpart; the prod image has `download-prod`.)
 - First-time builds for a given MACHINE take ~1–2 hours (cold sstate);
   subsequent builds are far faster thanks to the per-MACHINE sstate
@@ -52,7 +52,7 @@ ask which one before running. The four valid options are listed above.
 ## Local vs remote
 
 Default is local: the build runs in the local Docker daemon, in this
-checkout. `--remote` (e.g. `./scripts/build --remote image <MACHINE>`) dispatches to
+checkout. `--remote` (e.g. `./scripts/build --remote dev-image <MACHINE>`) dispatches to
 the build machine instead; only pass it if the user asks for it. The
 builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
 first), so push script or layer changes before a remote build.

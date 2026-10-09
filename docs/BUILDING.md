@@ -8,8 +8,8 @@ Everything goes through `scripts/build`. It runs BitBake inside the
 
 | Target | MACHINE | Dev image (`astraos-image-dev`) | Production image (`astraos-image`) |
 |---|---|---|---|
-| mcb (production carrier) | `astrax-variscite-imx8mp` | `scripts/build image astrax-variscite-imx8mp` | `scripts/build prod-image` |
-| Symphony v1.7 (Variscite dev board) | `imx8mp-var-dart` | `scripts/build image imx8mp-var-dart` | not supported |
+| mcb (production carrier) | `astrax-variscite-imx8mp` | `scripts/build dev-image astrax-variscite-imx8mp` | `scripts/build prod-image` |
+| Symphony v1.7 (Variscite dev board) | `imx8mp-var-dart` | `scripts/build dev-image imx8mp-var-dart` | not supported |
 
 - `prod-image` takes no MACHINE: the production image (dm-verity, HABv4
   signing chain, no SSH) only exists for `astrax-variscite-imx8mp`. It sets
@@ -25,8 +25,8 @@ Everything goes through `scripts/build`. It runs BitBake inside the
 ## Local builds (default)
 
 ```bash
-scripts/build image imx8mp-var-dart                  # Symphony, dev
-scripts/build image astrax-variscite-imx8mp          # mcb, dev
+scripts/build dev-image imx8mp-var-dart              # Symphony, dev
+scripts/build dev-image astrax-variscite-imx8mp      # mcb, dev
 scripts/build prod-image                             # mcb, production
 ```
 
@@ -38,7 +38,7 @@ Machine).
 
 - **Layers.** If `sources/poky` is missing the script runs `repo init` and
   `repo sync` in the checkout first. `--force-resync` re-runs `repo sync`
-  even when `sources/` exists (`scripts/build --force-resync image ...`).
+  even when `sources/` exists (`scripts/build --force-resync dev-image ...`).
   This runs on the host, so your git/SSH access to the layer remotes
   applies.
 - **Caches.** `sstate/` goes in the directory you launch the script from
@@ -59,8 +59,8 @@ Output lands in `build-<MACHINE>/tmp-<MACHINE>/deploy/images/<MACHINE>/`:
 Add `--remote`:
 
 ```bash
-scripts/build --remote image imx8mp-var-dart         # Symphony, dev
-scripts/build --remote image astrax-variscite-imx8mp # mcb, dev
+scripts/build --remote dev-image imx8mp-var-dart     # Symphony, dev
+scripts/build --remote dev-image astrax-variscite-imx8mp # mcb, dev
 scripts/build --remote prod-image                    # mcb, production
 ```
 
@@ -78,8 +78,8 @@ The builder keeps its sstate at `/home/akothapalli/yocto/sstate`.
 Fetching the result, matching the build you ran:
 
 ```bash
-scripts/build download imx8mp-var-dart [<dest-dir>]        # dev wic.zst, default dest: current dir
-scripts/build download astrax-variscite-imx8mp [<dest-dir>]
+scripts/build download-dev imx8mp-var-dart [<dest-dir>]   # dev wic.zst, default dest: current dir
+scripts/build download-dev astrax-variscite-imx8mp [<dest-dir>]
 scripts/build download-prod [<dest-dir>]                   # prod wic, mcb
 ```
 

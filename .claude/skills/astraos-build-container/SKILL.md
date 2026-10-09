@@ -23,5 +23,5 @@ on its own. Just invoke the command — the
 script knows what to do.
 
 The container image is tagged `astraos-builder:latest`. After it
-finishes, subsequent `./scripts/build image|sdk|recipe|...` calls will
+finishes, subsequent `./scripts/build dev-image|sdk|recipe|...` calls will
 use the new image automatically.

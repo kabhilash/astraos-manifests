@@ -16,14 +16,14 @@
 #
 # Usage:
 #   scripts/build [--local | --remote] container
-#   scripts/build [--local | --remote] image       <MACHINE>
+#   scripts/build [--local | --remote] dev-image   <MACHINE>
 #   scripts/build [--local | --remote] prod-image
 #   scripts/build [--local | --remote] sdk         <MACHINE>
 #   scripts/build [--local | --remote] recipe      <MACHINE> <RECIPE> [TASK]
 #   scripts/build [--local | --remote] bitbake     <MACHINE> <args...>
 #   scripts/build [--local | --remote] shell       <MACHINE>
 #   scripts/build [--local | --remote] publish     <MACHINE>
-#   scripts/build download      <MACHINE> [<dest-dir>]   (dev wic from the builder)
+#   scripts/build download-dev  <MACHINE> [<dest-dir>]   (dev wic from the builder)
 #   scripts/build download-prod [<dest-dir>]             (prod wic from the builder)
 #
 # MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-variscite-imx8mp
@@ -56,7 +56,7 @@
 set -euo pipefail
 
 ASTRAOS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INVOCATION_PWD="${PWD}"   # captured before any later cd; used by 'download'
+INVOCATION_PWD="${PWD}"   # captured before any later cd; used by 'download-dev'/'download-prod'
 IMAGE_TAG="astraos-builder:latest"
 
 BUILDER_HOST="${ASTRAOS_BUILDER_HOST:-10.11.12.20}"
@@ -92,13 +92,13 @@ AstraOS build helper.
 Usage (most subcommands accept optional --local | --remote and --force-resync prefixes):
   scripts/build container                              Rebuild the devcontainer image
   scripts/build clean                                  Wipe ${BUILDER_PATH} on builder + repo sync (sstate/downloads preserved)
-  scripts/build image       <MACHINE>                  Build astraos-image-dev for MACHINE
+  scripts/build dev-image   <MACHINE>                  Build astraos-image-dev for MACHINE
   scripts/build prod-image                             Build astraos-image (mcb production)
   scripts/build sdk         <MACHINE>                  Build astraos-sdk for MACHINE
   scripts/build recipe      <MACHINE> <RECIPE> [TASK]  bitbake [-c TASK] RECIPE
   scripts/build bitbake     <MACHINE> <args...>        bitbake passthrough
   scripts/build shell       <MACHINE>                  Interactive shell, env sourced
-  scripts/build download    <MACHINE> [<dest-dir>]     scp the latest dev wic.zst from the builder
+  scripts/build download-dev <MACHINE> [<dest-dir>]    scp the latest dev wic.zst from the builder
   scripts/build download-prod [<dest-dir>]             scp the latest prod wic.zst (mcb) from the builder
   scripts/build publish     <MACHINE>                  Build astraos-image-dev, snapshot its rpm feed and
                                                        serve it to dev boards (Variscite MACHINEs only)
@@ -366,12 +366,12 @@ esac
 # Remote dispatch is opt-in via --remote.
 [ -z "${MODE}" ] && MODE=local
 
-# download / download-prod: scp the latest dev (or prod) image wic.zst from
+# download-dev / download-prod: scp the latest dev (or prod) image wic.zst from
 # the builder to a local dir, matching the build subcommand that produced it
-# (image -> download <MACHINE>, prod-image -> download-prod). Only useful
+# (dev-image -> download-dev <MACHINE>, prod-image -> download-prod). Only useful
 # for --remote builds; local builds leave the wic in build-<MACHINE>/.
 # Direct host-to-host transfer; no docker, no remote dispatch.
-if [ "${1:-}" = "download" ] || [ "${1:-}" = "download-prod" ]; then
+if [ "${1:-}" = "download-dev" ] || [ "${1:-}" = "download-prod" ]; then
     DL_KIND="${1}"
     shift
     if _in_container; then
@@ -391,9 +391,9 @@ if [ "${1:-}" = "download" ] || [ "${1:-}" = "download-prod" ]; then
         # directory and have the wic land right there.
         DEST="${2:-${INVOCATION_PWD}}"
         WIC_NAME="astraos-image-dev-${MACHINE}.rootfs.wic.zst"
-        BUILD_HINT="scripts/build --remote image ${MACHINE}"
+        BUILD_HINT="scripts/build --remote dev-image ${MACHINE}"
         if [ -z "${MACHINE}" ]; then
-            echo "Usage: scripts/build download <MACHINE> [<dest-dir>]" >&2
+            echo "Usage: scripts/build download-dev <MACHINE> [<dest-dir>]" >&2
             exit 1
         fi
         _check_machine "${MACHINE}"
@@ -547,7 +547,7 @@ case "${cmd}" in
         _build_container
         ;;
 
-    image)
+    dev-image)
         MACHINE="${1:-}"; [ -z "$MACHINE" ] && usage
         _check_machine "$MACHINE"
         _run "source scripts/setup-environment ${MACHINE} && bitbake astraos-image-dev"
