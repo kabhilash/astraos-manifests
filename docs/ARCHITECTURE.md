@@ -285,8 +285,11 @@ The exported Yocto SDK includes:
 
 ## Compliance & Release Engineering
 
-In `astraos.conf` (`create-spdx` and `cve-check` are inherited for prod
-builds only, from `conf/local.conf.in`; SPDX documents do not embed sources):
+In `astraos.conf` (`create-spdx` is inherited for prod builds only, from
+`conf/local.conf.in`; SPDX documents do not embed sources). On Scarthgap,
+prod builds also inherit `cve-check` (from `scripts/setup-environment`; the
+`CVE_CHECK_*` settings are in meta-astrax `main`'s `astraos.conf`); Wrynose
+removed that class.
 
 ```
 INHERIT_DISTRO:remove = "create-spdx"
@@ -295,8 +298,6 @@ ARCHIVER_MODE[src] = "patched"
 LICENSE_CREATE_PACKAGE = "1"
 COPY_LIC_MANIFEST = "1"
 COPY_LIC_DIRS = "1"
-CVE_CHECK_FORMAT_JSON = "1"
-CVE_CHECK_REPORT_PATCHED = "1"
 
 BB_HASHSERVE = "auto"
 BB_SIGNATURE_HANDLER = "OEEquivHash"
@@ -308,10 +309,10 @@ CI publishes per-build artifacts:
 - `astraos-bundle-<machine>-<sha>.raucb`
 - `astraos-image-<machine>-<sha>.spdx.json` (SBOM)
 - `astraos-image-<machine>-<sha>-license-manifest.txt`
-- `astraos-image-<machine>-<sha>-cve.json` + `.html`
+- `astraos-image-<machine>-<sha>-cve.json` + `.html` (Scarthgap only)
 
-CVE-check gates releases: block on Critical/High, allow-with-acknowledgment
-on Medium/Low via `CVE_CHECK_IGNORE_FILES`.
+On Scarthgap, CVE-check gates releases: block on Critical/High,
+allow-with-acknowledgment on Medium/Low. Wrynose builds have no CVE scan.
 
 ## CI/CD
 

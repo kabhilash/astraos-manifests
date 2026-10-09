@@ -35,7 +35,8 @@ differs:
 
 - `prod-image` takes no MACHINE: the production image (dm-verity, HABv4
   signing chain, no SSH) only exists for `astrax-variscite-imx8mp`. It sets
-  `ASTRAOS_BUILD_TYPE=prod`, which turns on `cve-check` in `local.conf`.
+  `ASTRAOS_BUILD_TYPE=prod`, which turns on `create-spdx` in `local.conf` (plus `cve-check` on
+  Scarthgap; Wrynose no longer has that class).
 - The dev image has a writable rootfs, root SSH and debug tools. It is the
   only image Symphony builds.
 - The two Raspberry Pi MACHINEs (`raspberrypi5`, `raspberrypi-cm5-io-board`)

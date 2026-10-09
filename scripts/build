@@ -395,8 +395,8 @@ case "${cmd}" in
         ;;
 
     prod-image)
-        # ASTRAOS_BUILD_TYPE=prod enables the CVE database scan in
-        # local.conf (see conf/local.conf.in conditional INHERIT).
+        # ASTRAOS_BUILD_TYPE=prod enables SPDX (and the CVE database scan
+        # on scarthgap) in local.conf (see conf/local.conf.in conditional INHERIT).
         _run "ASTRAOS_BUILD_TYPE=prod source scripts/setup-environment astrax-variscite-imx8mp && bitbake astraos-image"
         ;;
 

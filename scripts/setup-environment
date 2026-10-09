@@ -14,7 +14,7 @@
 #   ASTRAOS_HOST_ROOT  = host path of the checkout when running in the
 #     build container (set by scripts/build); only used for the summary.
 #   ASTRAOS_BUILD_TYPE = dev|prod (default dev). When "prod", local.conf
-#     inherits cve-check. scripts/build's prod-image subcommand sets this.
+#     inherits create-spdx (and cve-check on scarthgap). scripts/build's prod-image subcommand sets this.
 #
 # After sourcing, you'll be in <build-dir>/ with bblayers.conf, local.conf,
 # and the standard poky build env loaded (bitbake on PATH, etc.).
@@ -59,8 +59,9 @@ CORE_LAYERS="  ${SOURCES_DIR}/poky/meta \\
 "
 LTS_MIXINS_LAYER="  ${SOURCES_DIR}/meta-lts-mixins \\
 "
-# Settings valid on scarthgap only: wrynose removed both variables and
-# setting TCLIBCAPPEND there is a parse error.
+# Settings valid on scarthgap only: wrynose removed TCLIBCAPPEND,
+# BB_DANGLINGAPPENDS_WARNONLY and cve-check.bbclass (setting TCLIBCAPPEND or
+# inheriting cve-check there is a parse error).
 RELEASE_CONF=""
 case "${RELEASE}" in
     wrynose)
@@ -81,7 +82,11 @@ TCLIBCAPPEND = ""
 
 # scarthgap: meta-imx ships bbappends for FSL-distro recipes that do not exist
 # in the astraos distro; bitbake treats orphan bbappends as fatal by default.
-BB_DANGLINGAPPENDS_WARNONLY = "1"'
+BB_DANGLINGAPPENDS_WARNONLY = "1"
+
+# scarthgap: CVE scan for production builds (the class is gone on wrynose).
+# Its CVE_CHECK_* settings are in meta-astrax main'"'"'s astraos.conf.
+INHERIT += "${@'"'"'cve-check'"'"' if d.getVar('"'"'ASTRAOS_BUILD_TYPE'"'"') == '"'"'prod'"'"' else '"'"''"'"'}"'
         ;;
 esac
 
@@ -103,7 +108,7 @@ MACHINE:
               default: build-<MACHINE>
 
 Environment:
-  ASTRAOS_BUILD_TYPE=dev|prod   default dev; prod enables cve-check in local.conf
+  ASTRAOS_BUILD_TYPE=dev|prod   default dev; prod enables create-spdx (+ cve-check on scarthgap)
   ASTRAOS_HOST_ROOT=<path>      only affects the BUILD_DIR line of the summary
                                 (set by scripts/build inside the container)
 
@@ -137,7 +142,7 @@ BUILD_DIR="${2:-build-${MACHINE}}"
 BUILD_PATH="${ASTRAOS_ROOT}/${BUILD_DIR}"
 
 # dev | prod. Templated into local.conf to gate prod-only INHERITs
-# (cve-check today; potentially signing/dm-verity-related toggles later).
+# (create-spdx and, on scarthgap, cve-check today; potentially signing/dm-verity-related toggles later).
 ASTRAOS_BUILD_TYPE="${ASTRAOS_BUILD_TYPE:-dev}"
 case "${ASTRAOS_BUILD_TYPE}" in
     dev|prod) ;;

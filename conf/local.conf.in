@@ -7,10 +7,10 @@ DISTRO ?= "astraos"
 
 # Build type: "dev" (default) or "prod". Set by scripts/build prod-image,
 # read by the conditional INHERIT below to scope production-only classes
-# (cve-check, create-spdx) so dev iteration doesn't pay for a full CVE
-# DB scan or SBOM generation.
+# (create-spdx; on scarthgap also cve-check, in the release block below) so dev
+# iteration doesn't pay for SBOM generation or a CVE DB scan.
 ASTRAOS_BUILD_TYPE = "@BUILD_TYPE@"
-INHERIT += "${@'cve-check create-spdx' if d.getVar('ASTRAOS_BUILD_TYPE') == 'prod' else ''}"
+INHERIT += "${@'create-spdx' if d.getVar('ASTRAOS_BUILD_TYPE') == 'prod' else ''}"
 
 # PACKAGE_CLASSES is set in meta-astrax/conf/distro/astraos.conf - don't
 # shadow it here. (Earlier this file hard-set package_ipk, which masked
