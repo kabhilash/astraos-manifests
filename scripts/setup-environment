@@ -125,7 +125,7 @@ echo "  MACHINE          = ${MACHINE}"
 if [ -n "${ASTRAOS_HOST_ROOT:-}" ]; then
     # In the container the checkout is mounted at ASTRAOS_ROOT; show where
     # the build dir really lives on the host.
-    echo "  BUILD_DIR        = ${ASTRAOS_HOST_ROOT}/${BUILD_DIR}  (in container: ${BUILD_PATH})"
+    echo "  BUILD_DIR        = ${ASTRAOS_HOST_ROOT}/${BUILD_DIR}"
 else
     echo "  BUILD_DIR        = ${BUILD_PATH}"
 fi
