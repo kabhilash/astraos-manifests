@@ -22,6 +22,8 @@ With `--remote` the script handles the SSH dispatch to the build machine
 on its own. Just invoke the command — the
 script knows what to do.
 
-The container image is tagged `astraos-builder:latest`. After it
+The container image is tagged after the Yocto release of the manifest
+`scripts/build` uses (`MANIFEST`): `astraos-builder:wrynose` for
+`manifests/wrynose.xml`, `astraos-builder:latest` for Scarthgap. After it
 finishes, subsequent `./scripts/build dev-image|sdk|recipe|...` calls will
 use the new image automatically.

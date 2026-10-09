@@ -57,7 +57,16 @@ set -euo pipefail
 
 ASTRAOS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INVOCATION_PWD="${PWD}"   # captured before any later cd; used by 'download-dev'/'download-prod'
-IMAGE_TAG="astraos-builder:latest"
+# Manifest every repo init uses. The builder image is tagged after the Yocto
+# release it pins, so checkouts of different releases can share one Docker
+# daemon: wrynose.xml -> astraos-builder:wrynose; the Scarthgap manifest
+# (default.xml) keeps astraos-builder:latest.
+MANIFEST="manifests/wrynose.xml"
+case "$(basename "${MANIFEST}" .xml)" in
+    wrynose)            IMAGE_TAG="astraos-builder:wrynose" ;;
+    scarthgap|default)  IMAGE_TAG="astraos-builder:latest" ;;
+    *) echo "ERROR: no builder image tag for ${MANIFEST}" >&2; exit 1 ;;
+esac
 
 BUILDER_HOST="${ASTRAOS_BUILDER_HOST:-10.11.12.20}"
 BUILDER_USER="${ASTRAOS_BUILDER_USER:-akothapalli}"
@@ -284,7 +293,7 @@ _ensure_sources() {
     fi
     if [ ! -d "${ASTRAOS_ROOT}/.repo" ] || [ "${FORCE_RESYNC}" = 1 ]; then
         echo ">>> repo init in ${ASTRAOS_ROOT}"
-        (cd "${ASTRAOS_ROOT}" && repo init -u "${ASTRAOS_GIT_URL}" -m manifests/wrynose.xml --no-clone-bundle)
+        (cd "${ASTRAOS_ROOT}" && repo init -u "${ASTRAOS_GIT_URL}" -m "${MANIFEST}" --no-clone-bundle)
     fi
     echo ">>> repo sync ${sync_flags} in ${ASTRAOS_ROOT}"
     (cd "${ASTRAOS_ROOT}" && repo sync -j16 --no-clone-bundle ${sync_flags})
@@ -490,7 +499,7 @@ if [ "${1:-}" = "clean" ]; then
         clean_ssh_tty=""
     fi
     exec ssh ${clean_ssh_tty} -p "${BUILDER_PORT}" "${BUILDER_USER}@${BUILDER_HOST}" \
-        ASTRAOS_GIT_URL="${ASTRAOS_GIT_URL}" BUILDER_PATH="${BUILDER_PATH}" 'bash -s' <<'REMOTE_CLEAN'
+        ASTRAOS_GIT_URL="${ASTRAOS_GIT_URL}" BUILDER_PATH="${BUILDER_PATH}" MANIFEST="${MANIFEST}" 'bash -s' <<'REMOTE_CLEAN'
 set -euo pipefail
 cd /
 rm -rf "${BUILDER_PATH}"
@@ -498,7 +507,7 @@ git clone "${ASTRAOS_GIT_URL}" "${BUILDER_PATH}"
 cd "${BUILDER_PATH}"
 echo ">>> HEAD = $(git log --oneline -1)"
 echo ">>> repo init"
-repo init -u "${ASTRAOS_GIT_URL}" -m manifests/wrynose.xml --no-clone-bundle
+repo init -u "${ASTRAOS_GIT_URL}" -m "${MANIFEST}" --no-clone-bundle
 echo ">>> repo sync"
 repo sync -j16 --no-clone-bundle
 echo ">>> sources/:"
@@ -547,7 +556,7 @@ if [ "${MODE}" = "remote" ]; then
     # absent. This means a brand-new builder (or one where the user
     # rm-rf'd the workspace) recovers automatically on the next build
     # command - no separate `clean` call required.
-    bootstrap_step="mkdir -p \"${BUILDER_HOST_ROOT}/sstate\" \"${BUILDER_HOST_ROOT}/downloads\" && if [ ! -d \"${BUILDER_PATH}/.git\" ]; then echo \">>> bootstrapping workspace at ${BUILDER_PATH}\" && git clone \"${ASTRAOS_GIT_URL}\" \"${BUILDER_PATH}\" && cd \"${BUILDER_PATH}\" && repo init -u \"${ASTRAOS_GIT_URL}\" -m manifests/wrynose.xml --no-clone-bundle && repo sync -j16 --no-clone-bundle; fi &&"
+    bootstrap_step="mkdir -p \"${BUILDER_HOST_ROOT}/sstate\" \"${BUILDER_HOST_ROOT}/downloads\" && if [ ! -d \"${BUILDER_PATH}/.git\" ]; then echo \">>> bootstrapping workspace at ${BUILDER_PATH}\" && git clone \"${ASTRAOS_GIT_URL}\" \"${BUILDER_PATH}\" && cd \"${BUILDER_PATH}\" && repo init -u \"${ASTRAOS_GIT_URL}\" -m \"${MANIFEST}\" --no-clone-bundle && repo sync -j16 --no-clone-bundle; fi &&"
     # Always pull AstraOS to pick up Dockerfile / scripts / manifest
     # changes before any subcommand runs. Container previously skipped
     # this and built against a stale .devcontainer/Dockerfile.

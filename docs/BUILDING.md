@@ -4,6 +4,11 @@ Everything goes through `scripts/build`. It runs BitBake inside the
 `astraos-builder` devcontainer image, on your own Docker daemon by default
 (`--local`) or on the dedicated build machine (`--remote`).
 
+The image tag follows the manifest `scripts/build` initialises the layers
+from (`MANIFEST` near the top of the script): `astraos-builder:wrynose` for
+`manifests/wrynose.xml`, `astraos-builder:latest` for Scarthgap, so both
+releases can be built on one Docker daemon without overwriting each other.
+
 ## Which command builds what
 
 | Target | MACHINE | Dev image (`astraos-image-dev`) | Production image (`astraos-image`) |
