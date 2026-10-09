@@ -2,6 +2,7 @@
 # AstraOS build environment setup.
 #
 # Usage:    source scripts/setup-environment <MACHINE> [<build-dir>]
+#           source scripts/setup-environment --help
 #
 # MACHINE may be:
 #   raspberrypi5                 (RPi 5 dev)
@@ -30,10 +31,48 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ASTRAOS_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SOURCES_DIR="${ASTRAOS_ROOT}/sources"
 
+_astraos_usage() {
+    cat <<EOF
+AstraOS build environment setup. Must be sourced, not executed.
+
+Usage:
+  source scripts/setup-environment <MACHINE> [<build-dir>]
+  source scripts/setup-environment -h | --help
+
+MACHINE:
+  raspberrypi5               Raspberry Pi 5 (dev)
+  raspberrypi-cm5-io-board   Raspberry Pi CM5 on the CM5 IO Board (dev)
+  imx8mp-var-dart            Variscite Symphony v1.7 (dev)
+  astrax-variscite-imx8mp    mcb production carrier (hardware pending)
+
+<build-dir>   relative to the checkout (${ASTRAOS_ROOT});
+              default: build-<MACHINE>
+
+Environment:
+  ASTRAOS_BUILD_TYPE=dev|prod   default dev; prod enables cve-check in local.conf
+  ASTRAOS_HOST_ROOT=<path>      only affects the BUILD_DIR line of the summary
+                                (set by scripts/build inside the container)
+
+Regenerates <build-dir>/conf/{bblayers,local}.conf on every run, puts
+BitBake on PATH and leaves you in <build-dir>/. Needs sources/ from
+'repo init && repo sync' (scripts/build does this for you).
+EOF
+}
+
+case "${1:-}" in
+    -h|--help|help)
+        _astraos_usage
+        unset -f _astraos_usage
+        return 0
+        ;;
+esac
+
 if [ "$#" -lt 1 ]; then
-    echo "Usage: source scripts/setup-environment <MACHINE> [<build-dir>]" >&2
+    _astraos_usage >&2
+    unset -f _astraos_usage
     return 1
 fi
+unset -f _astraos_usage
 
 MACHINE="$1"
 # Default to a per-MACHINE build dir so concurrent / interleaved builds for
