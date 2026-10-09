@@ -27,7 +27,11 @@ For local runs:
 
 - missing `sources/poky` is fetched automatically (`repo init` +
   `repo sync`); add `--force-resync` to re-run `repo init` + `repo sync --force-checkout --detach`
-  on an existing `sources/` (discards uncommitted edits there; lists them first)
+  on an existing `sources/`: every project goes back to its manifest
+  revision on a detached HEAD, and uncommitted edits there are
+  discarded. If any exist they are listed in a warning banner followed
+  by a 10s Ctrl+C window. Only pass `--force-resync` when the user asks
+  for it — an agent cannot press Ctrl+C
 - sstate lives in `./sstate` of the directory the script is launched
   from (`ASTRAOS_SSTATE_DIR` to override), downloads in
   `~/yocto/downloads` (`ASTRAOS_DL_DIR`) — launch from the same
