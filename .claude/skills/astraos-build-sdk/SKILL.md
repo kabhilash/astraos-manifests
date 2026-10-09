@@ -31,9 +31,7 @@ or `imx8mp-var-dart` while `mcb` hardware is pending.
 ## What the user gets
 
 A self-extracting `.sh` installer in
-`build-<MACHINE>/tmp-<MACHINE>/deploy/sdk/` in the checkout (or
-`/home/akothapalli/yocto/astraos/` on the build machine for `--remote`
-builds), named
+`build-<MACHINE>/tmp-<MACHINE>/deploy/sdk/` in the checkout, named
 something like
 `astraos-glibc-x86_64-astraos-sdk-cortexa53-<MACHINE>-toolchain-0.1.0.sh`. Running it on a developer Mac/Linux box installs
 the cross-sysroot under `/opt/astraos-sdk/`. The user then sources
@@ -42,18 +40,12 @@ build app code (e.g. `astraX_BT`) against the AstraOS target sysroot.
 
 Cold SDK builds take a while (the Qt6 stack is heavy); subsequent
 builds for the same MACHINE hit the per-MACHINE sstate cache
-(`/home/akothapalli/yocto/sstate-scarthgap/<MACHINE>/` on the build machine) and
+(`<sstate dir>/<MACHINE>/`) and
 finish fast.
 
-## Local vs remote
+## Where it runs
 
-Default is local: the build runs in the local Docker daemon, in this
-checkout. `--remote` (e.g. `./scripts/build --remote sdk <MACHINE>`) dispatches to
-the build machine instead; only pass it if the user asks for it. The
-builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
-first), so push script or layer changes before a remote build.
-
-For local runs:
+The build runs in the local Docker daemon, in this checkout:
 
 - a missing core layer in `sources/` (`poky` on Scarthgap, `openembedded-core`
   on Wrynose) is fetched automatically (`repo init` +

@@ -67,15 +67,9 @@ If the user wants a more complex BitBake invocation (multiple recipes,
 flags like `-k -v`, environment overrides), use `astraos-bitbake`
 instead.
 
-## Local vs remote
+## Where it runs
 
-Default is local: the build runs in the local Docker daemon, in this
-checkout. `--remote` (e.g. `./scripts/build --remote recipe <MACHINE> <RECIPE> [TASK]`) dispatches to
-the build machine instead; only pass it if the user asks for it. The
-builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
-first), so push script or layer changes before a remote build.
-
-For local runs:
+The build runs in the local Docker daemon, in this checkout:
 
 - a missing core layer in `sources/` (`poky` on Scarthgap, `openembedded-core`
   on Wrynose) is fetched automatically (`repo init` +

@@ -36,28 +36,17 @@ ask which one before running. The four valid options are listed above.
 - `bitbake` runs inside the devcontainer on the local Docker daemon
   (default); the script handles all of that — just invoke it.
 - The image lands in `build-<MACHINE>/tmp-<MACHINE>/deploy/images/<MACHINE>/`
-  (`astraos-image-dev-<MACHINE>.rootfs.wic.zst`) in the checkout. For a
-  `--remote` build it is in `/home/akothapalli/yocto/astraos/` on the
-  build machine instead, and `scripts/build download-dev <MACHINE> [<dest>]`
-  scp's the dev wic to the user's box. (`download-dev` is the dev-image
-  counterpart; the prod image has `download-prod`.)
+  (`astraos-image-dev-<MACHINE>.rootfs.wic.zst`) in the checkout.
 - First-time builds for a given MACHINE take ~1–2 hours (cold sstate);
   subsequent builds are far faster thanks to the per-MACHINE sstate
-  cache (`<sstate dir>/<MACHINE>/`; on the build machine
-  `/home/akothapalli/yocto/sstate-scarthgap`).
+  cache (`<sstate dir>/<MACHINE>/`).
 - Both Variscite MACHINEs build the dev image: `imx8mp-var-dart`
   (Symphony) and `astrax-variscite-imx8mp` (mcb). Only mcb has a
   production image.
 
-## Local vs remote
+## Where it runs
 
-Default is local: the build runs in the local Docker daemon, in this
-checkout. `--remote` (e.g. `./scripts/build --remote dev-image <MACHINE>`) dispatches to
-the build machine instead; only pass it if the user asks for it. The
-builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
-first), so push script or layer changes before a remote build.
-
-For local runs:
+The build runs in the local Docker daemon, in this checkout:
 
 - a missing core layer in `sources/` (`poky` on Scarthgap, `openembedded-core`
   on Wrynose) is fetched automatically (`repo init` +

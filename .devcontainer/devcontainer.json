@@ -12,9 +12,8 @@
     "workspaceMount": "source=${localWorkspaceFolder},target=/home/akothapalli/yocto/astraos,type=bind,consistency=cached",
 
     // sstate-cache and downloads at /home/akothapalli/yocto/{sstate,downloads}
-    // (matching local.conf.in and the host layout on the AstraOS builder).
-    // On the build machine these are bind mounts to host paths; in a VS Code
-    // devcontainer on a Mac these are named volumes that survive container
+    // (matching local.conf.in). scripts/build bind-mounts host folders there;
+    // in a VS Code devcontainer they are named volumes that survive container
     // rebuilds.
     "mounts": [
         "source=astraos-sstate-wrynose,target=/home/akothapalli/yocto/sstate,type=volume",

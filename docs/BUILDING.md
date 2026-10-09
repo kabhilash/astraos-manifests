@@ -1,8 +1,8 @@
 # Building AstraOS
 
 Everything goes through `scripts/build`. It runs BitBake inside the
-`astraos-builder` devcontainer image, on your own Docker daemon by default
-(`--local`) or on the dedicated build machine (`--remote`).
+`astraos-builder` devcontainer image on your own Docker daemon, in this
+checkout.
 
 The image tag follows the manifest `scripts/build` initialises the layers
 from (`MANIFEST` near the top of the script): `astraos-builder:latest` for
@@ -52,11 +52,9 @@ scripts/build dev-image astrax-variscite-imx8mp      # mcb, dev
 scripts/build prod-image                             # mcb, production
 ```
 
-(`--local` is accepted but implied, unless noted otherwise.)
-
-Prerequisites: Docker, and `repo` on `PATH`. Local builds are slow; the
-build machine has far more cores (see `docs/ARCHITECTURE.md`, Build
-Machine).
+Prerequisites: Docker, and `repo` on `PATH`. A cold build is slow; run it
+on a machine with plenty of cores and disk (see `docs/ARCHITECTURE.md`,
+Build Machine).
 
 - **Layers.** If `sources/openembedded-core` is missing the script runs `repo init` and
   `repo sync` in the checkout first. `--force-resync` re-runs
@@ -71,8 +69,7 @@ Machine).
   (`ASTRAOS_SSTATE_DIR` to override); downloads go to `~/yocto/downloads-<codename>`
   (`ASTRAOS_DL_DIR`). Launch from the same directory each time to keep the
   cache warm.
-- **Workspace.** The build dir is `build-<MACHINE>/` in the checkout
-  (`ASTRAOS_BUILDER_PATH` to override).
+- **Workspace.** The build dir is `build-<MACHINE>/` in the checkout.
 
 Output lands in `build-<MACHINE>/tmp-<MACHINE>/deploy/images/<MACHINE>/`:
 
@@ -80,50 +77,15 @@ Output lands in `build-<MACHINE>/tmp-<MACHINE>/deploy/images/<MACHINE>/`:
 - prod: the `astraos-image-astrax-variscite-imx8mp.*` files in the same
   directory
 
-## Remote builds
-
-Add `--remote`:
-
-```bash
-scripts/build --remote dev-image imx8mp-var-dart     # Symphony, dev
-scripts/build --remote dev-image astrax-variscite-imx8mp # mcb, dev
-scripts/build --remote prod-image                    # mcb, production
-```
-
-The script ssh-es to `akothapalli@10.11.12.20`, then on the builder:
-
-1. creates `sstate-<codename>/` and `downloads-<codename>/` and, if the workspace is missing,
-   clones it and runs `repo init` + `repo sync`;
-2. runs `git pull --ff-only` (retried 3x) and `repo sync` in the workspace;
-3. re-runs `scripts/build --local ...` there.
-
-Because of step 2, **the builder builds what is on GitHub `main`, not your
-working tree.** Commit and push script/layer changes before a remote build.
-The builder keeps its sstate at `/home/akothapalli/yocto/sstate-scarthgap`.
-
-Fetching the result, matching the build you ran:
-
-```bash
-scripts/build download-dev imx8mp-var-dart [<dest-dir>]   # dev wic.zst, default dest: current dir
-scripts/build download-dev astrax-variscite-imx8mp [<dest-dir>]
-scripts/build download-prod [<dest-dir>]                   # prod wic, mcb
-```
-
-Other remote-only helpers: `scripts/build clean` (always targets the
-builder; rejects `--local`) wipes the builder workspace and re-syncs,
-keeping caches. Override the target with `ASTRAOS_BUILDER_HOST`,
-`ASTRAOS_BUILDER_USER`, `ASTRAOS_BUILDER_PORT`, `ASTRAOS_BUILDER_PATH`,
-`ASTRAOS_BUILDER_HOST_ROOT`.
-
 ## Other useful commands
 
 ```bash
-scripts/build [--remote] shell <MACHINE>             # interactive shell, env sourced
-scripts/build [--remote] recipe <MACHINE> <recipe> [task]
-scripts/build [--remote] bitbake <MACHINE> <args...>
-scripts/build [--remote] sdk <MACHINE>
-scripts/build [--remote] publish <MACHINE>           # dev rpm feed, Variscite MACHINEs
-scripts/build [--remote] container                   # rebuild the builder image
+scripts/build shell <MACHINE>             # interactive shell, env sourced
+scripts/build recipe <MACHINE> <recipe> [task]
+scripts/build bitbake <MACHINE> <args...>
+scripts/build sdk <MACHINE>
+scripts/build publish <MACHINE>           # dev rpm feed, Variscite MACHINEs
+scripts/build container                   # rebuild the builder image
 ```
 
 `scripts/build --help` lists every subcommand and environment variable.

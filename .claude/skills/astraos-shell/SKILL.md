@@ -11,7 +11,7 @@ Run the shell subcommand of the AstraOS build script:
 ```
 
 This is **interactive**: the user lands at a bash prompt inside the
-devcontainer (on the local Docker daemon by default, or the build machine via SSH with `--remote`). The
+devcontainer on the local Docker daemon. The
 prompt has BitBake on PATH, `setup-environment <MACHINE>` already
 sourced, and `cwd = build-<MACHINE>/` in the workspace.
 The user types `bitbake ...` directly, edits files, runs
@@ -35,20 +35,13 @@ this matters.
 
 ## Practical note
 
-For remote shells the user must keep the SSH session alive. If they
-expect a long-running interactive session (e.g., devtool modify +
-edit + build + deploy cycles), suggest `tmux` / `screen` on the build
-machine, or just keep their terminal open.
+If the user expects a long-running interactive session (e.g., devtool
+modify + edit + build + deploy cycles), suggest `tmux` / `screen`, or
+just keep their terminal open.
 
-## Local vs remote
+## Where it runs
 
-Default is local: the build runs in the local Docker daemon, in this
-checkout. `--remote` (e.g. `./scripts/build --remote shell <MACHINE>`) dispatches to
-the build machine instead; only pass it if the user asks for it. The
-builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
-first), so push script or layer changes before a remote build.
-
-For local runs:
+The build runs in the local Docker daemon, in this checkout:
 
 - a missing core layer in `sources/` (`poky` on Scarthgap, `openembedded-core`
   on Wrynose) is fetched automatically (`repo init` +

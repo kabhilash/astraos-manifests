@@ -65,7 +65,7 @@ VAR_FLASH_IMAGE_NAME = "${@'astraos-image' if d.getVar('ASTRAOS_BUILD_TYPE') == 
 # Parallelism: use every core/thread the host offers. The build machine has
 # 96 threads / 1 TB RAM, so memory pressure isn't a concern even at full
 # concurrency. oe.utils.cpu_count() auto-adjusts on smaller hosts (a
-# developer's --local laptop, etc.) so this stays portable.
+# developer laptop, etc.) so this stays portable.
 BB_NUMBER_THREADS ?= "${@oe.utils.cpu_count()}"
 PARALLEL_MAKE     ?= "-j ${@oe.utils.cpu_count()}"
 
@@ -73,13 +73,10 @@ PARALLEL_MAKE     ?= "-j ${@oe.utils.cpu_count()}"
 BB_HASHSERVE = "auto"
 BB_SIGNATURE_HANDLER = "OEEquivHash"
 
-# Caches on the build machine, mounted into the container at the same
-# path as on the host (NVMe-backed). scripts/build bind-mounts the host
-# directories `${BUILDER_HOST_ROOT}/{sstate,downloads}` (default
-# `/home/akothapalli/yocto/{sstate,downloads}`) onto these in-container
-# paths. On a Mac running --local, scripts/build falls back to named
-# docker volumes mounted at the same in-container paths so this stays
-# portable.
+# Caches, at fixed in-container paths. scripts/build bind-mounts the host
+# directories ./sstate-<codename> (ASTRAOS_SSTATE_DIR) and
+# ~/yocto/downloads-<codename> (ASTRAOS_DL_DIR) onto them; the VS Code
+# devcontainer uses named docker volumes at the same paths.
 #
 # SSTATE_DIR is per-MACHINE so each target gets its own cache namespace.
 # Trade-off: native/cross tools rebuild per MACHINE (some duplication);
