@@ -23,8 +23,8 @@ set -e
 
 # Executed rather than sourced: BASH_SOURCE[0] is the script itself only
 # then. Its `return`s below would fail, and the env it sets up would die
-# with the subshell anyway.
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+# with the subshell anyway. --help is fine either way.
+if [ "${BASH_SOURCE[0]}" = "$0" ] && ! [[ "${1:-}" =~ ^(-h|--help|help)$ ]]; then
     echo "ERROR: setup-environment must be sourced, not executed:" >&2
     echo "       source scripts/setup-environment <MACHINE>" >&2
     exit 1
@@ -117,7 +117,7 @@ case "${1:-}" in
     -h|--help|help)
         _astraos_usage
         unset -f _astraos_usage
-        return 0
+        return 0 2>/dev/null || exit 0
         ;;
 esac
 
