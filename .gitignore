@@ -3,3 +3,5 @@ meta-*
 /sources/
 /.repo/
 /build-*/
+/sstate/
+/feeds/

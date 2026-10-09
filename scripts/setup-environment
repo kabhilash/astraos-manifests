@@ -10,6 +10,8 @@
 #   astrax-variscite-imx8mp           (production, mcb carrier - hardware pending)
 #
 # Env vars consumed:
+#   ASTRAOS_HOST_ROOT  = host path of the checkout when running in the
+#     build container (set by scripts/build); only used for the summary.
 #   ASTRAOS_BUILD_TYPE = dev|prod (default dev). When "prod", local.conf
 #     inherits cve-check. scripts/build's prod-image subcommand sets this.
 #
@@ -120,7 +122,13 @@ printf '%s' "${local_conf}" > "${BUILD_PATH}/conf/local.conf"
 echo ""
 echo "AstraOS build env ready."
 echo "  MACHINE          = ${MACHINE}"
-echo "  BUILD_DIR        = ${BUILD_PATH}"
+if [ -n "${ASTRAOS_HOST_ROOT:-}" ]; then
+    # In the container the checkout is mounted at ASTRAOS_ROOT; show where
+    # the build dir really lives on the host.
+    echo "  BUILD_DIR        = ${ASTRAOS_HOST_ROOT}/${BUILD_DIR}  (in container: ${BUILD_PATH})"
+else
+    echo "  BUILD_DIR        = ${BUILD_PATH}"
+fi
 echo "  ASTRAOS_BUILD_TYPE = ${ASTRAOS_BUILD_TYPE}"
 echo ""
 echo "Next:"

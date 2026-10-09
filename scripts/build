@@ -31,7 +31,11 @@
 #   ASTRAOS_BUILDER_USER=akothapalli
 #   ASTRAOS_BUILDER_PORT=22
 #   ASTRAOS_BUILDER_PATH=/home/akothapalli/yocto/astraos  (--local: defaults to this checkout)
-#   ASTRAOS_BUILDER_HOST_ROOT=/home/akothapalli/yocto  (parent of sstate/downloads on host)
+#   ASTRAOS_BUILDER_HOST_ROOT=/home/akothapalli/yocto  (builder's sstate/ lives here)
+#
+# Cache dirs for --local runs (bind-mounted into the container):
+#   ASTRAOS_SSTATE_DIR=<dir you launch the script from>/sstate
+#   ASTRAOS_DL_DIR=$HOME/yocto/downloads
 #
 # Dev rpm feed ('publish'; see docs/ARCHITECTURE.md "Dev package feed"):
 #   ASTRAOS_FEED_ROOT   --local: an absolute path, or relative to the
@@ -157,22 +161,18 @@ _run() {
         bash -c "${cmd}"
     else
         _ensure_image
-        # Bind host sstate/downloads from ${BUILDER_HOST_ROOT} when present
-        # (build machine layout, NVMe-backed); otherwise use named docker
-        # volumes mounted at the same in-container path. local.conf.in
-        # references /home/akothapalli/yocto/{sstate,downloads} inside the
-        # container regardless of the host source.
-        local sstate_mount dl_mount
-        if [ -d "${BUILDER_HOST_ROOT}/sstate" ]; then
-            sstate_mount="-v ${BUILDER_HOST_ROOT}/sstate:/home/akothapalli/yocto/sstate"
-        else
-            sstate_mount="-v astraos-sstate:/home/akothapalli/yocto/sstate"
-        fi
-        if [ -d "${BUILDER_HOST_ROOT}/downloads" ]; then
-            dl_mount="-v ${BUILDER_HOST_ROOT}/downloads:/home/akothapalli/yocto/downloads"
-        else
-            dl_mount="-v astraos-downloads:/home/akothapalli/yocto/downloads"
-        fi
+        # sstate cache: ${ASTRAOS_SSTATE_DIR}, default ./sstate under the
+        # directory the script was launched from. Downloads:
+        # ${ASTRAOS_DL_DIR}, default ~/yocto/downloads. Both are created
+        # here (as the calling user) so docker doesn't create them
+        # root-owned. local.conf.in references
+        # /home/akothapalli/yocto/{sstate,downloads} inside the container
+        # regardless of the host source.
+        local sstate_src="${ASTRAOS_SSTATE_DIR:-${INVOCATION_PWD}/sstate}"
+        local dl_src="${ASTRAOS_DL_DIR:-${HOME}/yocto/downloads}"
+        mkdir -p "${sstate_src}" "${dl_src}"
+        local sstate_mount="-v ${sstate_src}:/home/akothapalli/yocto/sstate"
+        local dl_mount="-v ${dl_src}:/home/akothapalli/yocto/downloads"
         # Bind ${BUILDER_PATH} as the workspace when running on the builder;
         # otherwise bind the local checkout dir.
         local workspace_src
@@ -199,6 +199,7 @@ _run() {
         fi
         docker run --rm ${docker_tty} \
             -v "${workspace_src}:/home/akothapalli/yocto/astraos" \
+            -e "ASTRAOS_HOST_ROOT=${workspace_src}" \
             ${sstate_mount} \
             ${dl_mount} \
             ${ssh_mount} \
@@ -455,11 +456,12 @@ fi
 # workspace exists).
 # --local runs execute in this checkout, so unless overridden the workspace
 # is the checkout itself rather than the builder's path above (which only
-# means something on the far side of the ssh hop). 'download' and 'clean'
+# means something on the far side of the ssh hop). BUILDER_HOST_ROOT is
+# deliberately left as derived from the builder path: it locates the shared
+# sstate/downloads dirs, not the workspace. 'download' and 'clean'
 # are builder-only and have already run by this point.
 if [ "${MODE}" = "local" ]; then
     BUILDER_PATH="${ASTRAOS_BUILDER_PATH:-${ASTRAOS_ROOT}}"
-    BUILDER_HOST_ROOT="${ASTRAOS_BUILDER_HOST_ROOT:-$(dirname "${BUILDER_PATH}")}"
 fi
 
 if [ "${MODE}" = "remote" ]; then
@@ -516,9 +518,12 @@ if [ "${MODE}" = "remote" ]; then
     # hop; nothing else the remote --local invocation reads is forwarded
     # this way (it either has its own remote-side default, like
     # BUILDER_PATH, or doesn't need one).
-    remote_env=""
+    # The builder keeps its sstate beside downloads/ under BUILDER_HOST_ROOT
+    # (not under its cwd, which is the workspace); pin it there so the
+    # --local default above doesn't move the warm cache.
+    remote_env="ASTRAOS_SSTATE_DIR=$(printf '%q' "${ASTRAOS_SSTATE_DIR:-${BUILDER_HOST_ROOT}/sstate}") "
     if [ "${1:-}" = "publish" ]; then
-        remote_env="ASTRAOS_FEED_ROOT=$(printf '%q' "${ASTRAOS_FEED_ROOT}") "
+        remote_env="${remote_env}ASTRAOS_FEED_ROOT=$(printf '%q' "${ASTRAOS_FEED_ROOT}") "
     fi
     exec ssh ${ssh_tty} -p "${BUILDER_PORT}" "${BUILDER_USER}@${BUILDER_HOST}" \
         "${bootstrap_step} ${sync_step} cd ${BUILDER_PATH} && ${remote_env}./scripts/build --local ${quoted_args}"
