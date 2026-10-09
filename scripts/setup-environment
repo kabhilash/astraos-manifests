@@ -21,8 +21,12 @@
 
 set -e
 
-if [ -z "${BASH_SOURCE[0]}" ]; then
-    echo "ERROR: setup-environment must be sourced (not executed)." >&2
+# Executed rather than sourced: BASH_SOURCE[0] is the script itself only
+# then. Its `return`s below would fail, and the env it sets up would die
+# with the subshell anyway.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    echo "ERROR: setup-environment must be sourced, not executed:" >&2
+    echo "       source scripts/setup-environment <MACHINE>" >&2
     exit 1
 fi
 
