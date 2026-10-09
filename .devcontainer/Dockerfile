@@ -1,7 +1,8 @@
 # AstraOS Yocto build container.
-# Based on Ubuntu 26.04 (LTS).
-
-FROM ubuntu:26.04
+# Based on Ubuntu 24.04 (LTS), Scarthgap's supported host; scripts/build passes
+# UBUNTU_VERSION=26.04 for the Wrynose manifest.
+ARG UBUNTU_VERSION=24.04
+FROM ubuntu:${UBUNTU_VERSION}
 
 ARG USER_UID=1000
 ARG USER_GID=1000

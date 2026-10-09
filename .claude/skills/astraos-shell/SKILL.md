@@ -50,17 +50,21 @@ first), so push script or layer changes before a remote build.
 
 For local runs:
 
-- missing `sources/openembedded-core` is fetched automatically (`repo init` +
+- a missing core layer in `sources/` (`poky` on Scarthgap, `openembedded-core`
+  on Wrynose) is fetched automatically (`repo init` +
   `repo sync`); add `--force-resync` to re-run `repo init` + `repo sync --force-checkout --detach`
   on an existing `sources/`: every project goes back to its manifest
   revision on a detached HEAD, and uncommitted edits there are
   discarded. If any exist they are listed in a warning banner followed
   by a 10s Ctrl+C window. Only pass `--force-resync` when the user asks
   for it — an agent cannot press Ctrl+C
-- sstate lives in `./sstate-<codename>` (e.g. `sstate-wrynose`) of the directory the script is launched
+- sstate lives in `./sstate-<codename>` (e.g. `sstate-scarthgap`) of the directory the script is launched
   from (`ASTRAOS_SSTATE_DIR` to override), downloads in
   `~/yocto/downloads-<codename>` (`ASTRAOS_DL_DIR`) — launch from the same
   directory each time to keep the cache warm
 - the build dir is `build-<MACHINE>/` inside the checkout
+- the release is Scarthgap (`manifests/default.xml`) by default; set
+  `ASTRAOS_MANIFEST=manifests/wrynose.xml` for Wrynose (use a separate
+  checkout - it has its own builder image, caches and layer set)
 
 Full walkthrough: `docs/BUILDING.md`.

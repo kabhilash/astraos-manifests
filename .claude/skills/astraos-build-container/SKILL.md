@@ -23,7 +23,8 @@ on its own. Just invoke the command — the
 script knows what to do.
 
 The container image is tagged after the Yocto release of the manifest
-`scripts/build` uses (`MANIFEST`): `astraos-builder:wrynose` for
-`manifests/wrynose.xml`, `astraos-builder:latest` for Scarthgap. After it
+`scripts/build` uses (`MANIFEST`): `astraos-builder:latest` for
+`manifests/default.xml` (Scarthgap, the default), `astraos-builder:wrynose` for
+`manifests/wrynose.xml`. After it
 finishes, subsequent `./scripts/build dev-image|sdk|recipe|...` calls will
 use the new image automatically.

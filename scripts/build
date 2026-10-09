@@ -38,7 +38,10 @@
 # Cache dirs for --local runs (bind-mounted into the container):
 #   ASTRAOS_SSTATE_DIR=<dir you launch the script from>/sstate-<codename>
 #   ASTRAOS_DL_DIR=$HOME/yocto/downloads-<codename>
-# (<codename> is the Yocto release of MANIFEST below, e.g. wrynose.)
+# (<codename> is the Yocto release of MANIFEST below, e.g. scarthgap.)
+#
+# Yocto release (manifest repo init uses):
+#   ASTRAOS_MANIFEST=manifests/default.xml  (Scarthgap; manifests/wrynose.xml = Wrynose)
 #
 # Dev rpm feed ('publish'; see docs/ARCHITECTURE.md "Dev package feed"):
 #   ASTRAOS_FEED_ROOT   local (default): an absolute path, or relative to the
@@ -64,10 +67,10 @@ INVOCATION_PWD="${PWD}"   # captured before any later cd; used by 'download-dev'
 # overwriting each other's image or mixing caches: wrynose.xml ->
 # astraos-builder:wrynose, sstate-wrynose/, downloads-wrynose/; the Scarthgap
 # manifest (default.xml) keeps astraos-builder:latest.
-MANIFEST="manifests/wrynose.xml"
+MANIFEST="${ASTRAOS_MANIFEST:-manifests/default.xml}"   # ASTRAOS_MANIFEST=manifests/wrynose.xml for Wrynose
 case "$(basename "${MANIFEST}" .xml)" in
-    wrynose)            YOCTO_CODENAME="wrynose";   IMAGE_TAG="astraos-builder:wrynose" ;;
-    scarthgap|default)  YOCTO_CODENAME="scarthgap"; IMAGE_TAG="astraos-builder:latest" ;;
+    wrynose)            YOCTO_CODENAME="wrynose";   IMAGE_TAG="astraos-builder:wrynose"; UBUNTU_VERSION="26.04" ;;
+    scarthgap|default)  YOCTO_CODENAME="scarthgap"; IMAGE_TAG="astraos-builder:latest";   UBUNTU_VERSION="24.04" ;;
     *) echo "ERROR: no Yocto codename for ${MANIFEST}" >&2; exit 1 ;;
 esac
 
@@ -165,6 +168,7 @@ _build_container() {
     local current_hash
     current_hash=$(_dockerfile_hash)
     docker build \
+        --build-arg UBUNTU_VERSION="${UBUNTU_VERSION}" \
         --build-arg USER_UID="$(id -u 2>/dev/null || echo 1000)" \
         --build-arg USER_GID="$(id -g 2>/dev/null || echo 1000)" \
         --label "astraos.dockerfile_sha256=${current_hash}" \
@@ -270,7 +274,9 @@ _force_resync_warning() {
 # to the layer remotes), before the container is entered. Mirrors the
 # builder bootstrap in the --remote dispatch below.
 _ensure_sources() {
-    if [ -d "${ASTRAOS_ROOT}/sources/openembedded-core" ] && [ "${FORCE_RESYNC}" != 1 ]; then
+    # openembedded-core on wrynose, poky on scarthgap (see setup-environment).
+    if { [ -d "${ASTRAOS_ROOT}/sources/openembedded-core" ] || [ -d "${ASTRAOS_ROOT}/sources/poky" ]; } \
+        && [ "${FORCE_RESYNC}" != 1 ]; then
         return 0
     fi
     if ! command -v repo >/dev/null 2>&1; then

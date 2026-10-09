@@ -5,9 +5,26 @@ Everything goes through `scripts/build`. It runs BitBake inside the
 (`--local`) or on the dedicated build machine (`--remote`).
 
 The image tag follows the manifest `scripts/build` initialises the layers
-from (`MANIFEST` near the top of the script): `astraos-builder:wrynose` for
-`manifests/wrynose.xml`, `astraos-builder:latest` for Scarthgap, so both
+from (`MANIFEST` near the top of the script): `astraos-builder:latest` for
+`manifests/default.xml` (Scarthgap), `astraos-builder:wrynose` for Wrynose, so both
 releases can be built on one Docker daemon without overwriting each other.
+
+## Yocto releases: Scarthgap (default) and Wrynose
+
+Two manifests live side by side: `manifests/default.xml` (Scarthgap, the
+default) and `manifests/wrynose.xml`. Pick Wrynose with
+`ASTRAOS_MANIFEST=manifests/wrynose.xml scripts/build ...`; use a separate
+checkout per release. The release is detected from the synced core layer
+(`LAYERSERIES_CORENAMES`), and `scripts/setup-environment` adapts what
+differs:
+
+| | Scarthgap | Wrynose |
+|---|---|---|
+| Core layers | `sources/poky` | `sources/openembedded-core` + `meta-yocto` |
+| Extra layers | `meta-lts-mixins` (Rust) | `meta-freescale-distro`, `meta-perl` (i.MX) |
+| `local.conf` | `TCLIBCAPPEND = ""`, `BB_DANGLINGAPPENDS_WARNONLY` | neither (parse error) |
+| Builder image | `astraos-builder:latest`, Ubuntu 24.04 | `astraos-builder:wrynose`, Ubuntu 26.04 |
+| Caches | `sstate-scarthgap/`, `downloads-scarthgap/` | `sstate-wrynose/`, `downloads-wrynose/` |
 
 ## Which command builds what
 
@@ -50,7 +67,7 @@ Machine).
   revision; commits on local branches are kept in those branches.
   This runs on the host, so your git/SSH access to the layer remotes
   applies.
-- **Caches.** `sstate-<codename>/` (e.g. `sstate-wrynose/`) goes in the directory you launch the script from
+- **Caches.** `sstate-<codename>/` (e.g. `sstate-scarthgap/`) goes in the directory you launch the script from
   (`ASTRAOS_SSTATE_DIR` to override); downloads go to `~/yocto/downloads-<codename>`
   (`ASTRAOS_DL_DIR`). Launch from the same directory each time to keep the
   cache warm.
@@ -82,7 +99,7 @@ The script ssh-es to `akothapalli@10.11.12.20`, then on the builder:
 
 Because of step 2, **the builder builds what is on GitHub `main`, not your
 working tree.** Commit and push script/layer changes before a remote build.
-The builder keeps its sstate at `/home/akothapalli/yocto/sstate-wrynose`.
+The builder keeps its sstate at `/home/akothapalli/yocto/sstate-scarthgap`.
 
 Fetching the result, matching the build you ran:
 

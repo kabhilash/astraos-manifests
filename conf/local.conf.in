@@ -45,6 +45,10 @@ CONF_VERSION = "2"
 # the tmp tree.
 TMPDIR = "${TOPDIR}/tmp-@MACHINE@"
 
+# Yocto-release-specific settings, filled in by scripts/setup-environment
+# from the release of sources/poky (empty on wrynose, see there).
+@RELEASE_CONF@
+
 # Freescale/NXP proprietary binary userspace (imx-gpu-viv Vivante driver,
 # imx-vpu-* codec libraries, firmware-imx-*) gates do_unpack on an explicit
 # ACCEPT_FSL_EULA opt-in beyond LICENSE_FLAGS_ACCEPTED. The EULA file is at

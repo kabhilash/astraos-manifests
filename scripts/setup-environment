@@ -31,6 +31,56 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ASTRAOS_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SOURCES_DIR="${ASTRAOS_ROOT}/sources"
 
+# Core layer: wrynose's manifest splits poky into bitbake + openembedded-core,
+# scarthgap's keeps sources/poky (which includes both).
+if [ -d "${SOURCES_DIR}/openembedded-core" ]; then
+    CORE_DIR="openembedded-core"
+else
+    CORE_DIR="poky"
+fi
+# Yocto release of the checked-out layers, from LAYERSERIES_CORENAMES
+# ("scarthgap", "wrynose", ...). A few things differ between releases and
+# are handled below; both manifests (manifests/default.xml = scarthgap,
+# manifests/wrynose.xml) share this script and conf/*.in.
+RELEASE="$(sed -n 's/^LAYERSERIES_CORENAMES *= *"\([^" ]*\).*/\1/p' \
+    "${SOURCES_DIR}/${CORE_DIR}/meta/conf/layer.conf" 2>/dev/null | head -n1)"
+# Layers meta-imx-sdk needs on wrynose (its LAYERDEPENDS); not part of the
+# scarthgap layer set.
+WRYNOSE_IMX_LAYERS=""
+# Core layers (@CORE_LAYERS@ in conf/bblayers.conf.in) and the Rust LTS mixin
+# (@LTS_MIXINS_LAYER@, scarthgap only: wrynose ships a new enough Rust).
+CORE_LAYERS="  ${SOURCES_DIR}/poky/meta \\
+  ${SOURCES_DIR}/poky/meta-poky \\
+  ${SOURCES_DIR}/poky/meta-yocto-bsp \\
+"
+LTS_MIXINS_LAYER="  ${SOURCES_DIR}/meta-lts-mixins \\
+"
+# Settings valid on scarthgap only: wrynose removed both variables and
+# setting TCLIBCAPPEND there is a parse error.
+RELEASE_CONF=""
+case "${RELEASE}" in
+    wrynose)
+        CORE_LAYERS="  ${SOURCES_DIR}/openembedded-core/meta \\
+  ${SOURCES_DIR}/meta-yocto/meta-poky \\
+  ${SOURCES_DIR}/meta-yocto/meta-yocto-bsp \\
+"
+        LTS_MIXINS_LAYER=""
+        WRYNOSE_IMX_LAYERS="  ${SOURCES_DIR}/meta-freescale-distro \\
+  ${SOURCES_DIR}/meta-openembedded/meta-perl \\
+"
+        ;;
+    *)
+        RELEASE_CONF='# scarthgap: defaultsetup.conf appends "-${TCLIBC}" to TMPDIR via
+# TCLIBCAPPEND, and that .= runs AFTER local.conf, so zero it out to keep the
+# tmp-<MACHINE> layout. (AstraOS only ships glibc.)
+TCLIBCAPPEND = ""
+
+# scarthgap: meta-imx ships bbappends for FSL-distro recipes that do not exist
+# in the astraos distro; bitbake treats orphan bbappends as fatal by default.
+BB_DANGLINGAPPENDS_WARNONLY = "1"'
+        ;;
+esac
+
 _astraos_usage() {
     cat <<EOF
 AstraOS build environment setup. Must be sourced, not executed.
@@ -110,9 +160,7 @@ case "$MACHINE" in
   ${SOURCES_DIR}/meta-arm/meta-arm-toolchain \\
   ${SOURCES_DIR}/meta-clang \\
   ${SOURCES_DIR}/meta-freescale \\
-  ${SOURCES_DIR}/meta-freescale-distro \\
-  ${SOURCES_DIR}/meta-openembedded/meta-perl \\
-  ${SOURCES_DIR}/meta-virtualization \\
+${WRYNOSE_IMX_LAYERS}  ${SOURCES_DIR}/meta-virtualization \\
   ${SOURCES_DIR}/meta-imx/meta-imx-bsp \\
   ${SOURCES_DIR}/meta-imx/meta-imx-sdk \\
   ${SOURCES_DIR}/meta-variscite-bsp-common \\
@@ -134,13 +182,13 @@ case "$MACHINE" in
 esac
 
 # Initialize the build dir using oe-core's helper (sets PATH, exports BB_ENV_*, etc.)
-if [ ! -d "${SOURCES_DIR}/openembedded-core" ]; then
-    echo "ERROR: ${SOURCES_DIR}/openembedded-core not found - run 'repo init && repo sync' first" >&2
+if [ ! -d "${SOURCES_DIR}/${CORE_DIR}" ]; then
+    echo "ERROR: ${SOURCES_DIR}/${CORE_DIR} not found - run 'repo init && repo sync' first" >&2
     return 1
 fi
 
 # shellcheck disable=SC1091
-source "${SOURCES_DIR}/openembedded-core/oe-init-build-env" "${BUILD_PATH}" >/dev/null
+source "${SOURCES_DIR}/${CORE_DIR}/oe-init-build-env" "${BUILD_PATH}" >/dev/null
 
 # Always regenerate bblayers.conf and local.conf on every source so that
 # bblayers picks up MACHINE_LAYERS changes (e.g. meta-raspberrypi vs.
@@ -153,11 +201,14 @@ bblayers="$(<"${ASTRAOS_ROOT}/conf/bblayers.conf.in")"
 bblayers="${bblayers//@SOURCES@/${SOURCES_DIR}}"
 bblayers="${bblayers//@TOPDIR@/${ASTRAOS_ROOT}}"
 bblayers="${bblayers//@MACHINE_LAYERS@/${MACHINE_LAYERS}}"
+bblayers="${bblayers//@CORE_LAYERS@/${CORE_LAYERS}}"
+bblayers="${bblayers//@LTS_MIXINS_LAYER@/${LTS_MIXINS_LAYER}}"
 printf '%s' "${bblayers}" > "${BUILD_PATH}/conf/bblayers.conf"
 
 local_conf="$(<"${ASTRAOS_ROOT}/conf/local.conf.in")"
 local_conf="${local_conf//@MACHINE@/${MACHINE}}"
 local_conf="${local_conf//@BUILD_TYPE@/${ASTRAOS_BUILD_TYPE}}"
+local_conf="${local_conf//@RELEASE_CONF@/${RELEASE_CONF}}"
 printf '%s' "${local_conf}" > "${BUILD_PATH}/conf/local.conf"
 
 echo ""
