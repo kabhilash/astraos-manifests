@@ -539,7 +539,7 @@ shift || true
 
 # Subcommands that enter the build env need the layers in sources/.
 case "${cmd}" in
-    image|prod-image|sdk|recipe|bitbake|shell|publish) _ensure_sources ;;
+    dev-image|prod-image|sdk|recipe|bitbake|shell|publish) _ensure_sources ;;
 esac
 
 case "${cmd}" in
