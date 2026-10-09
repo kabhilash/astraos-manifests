@@ -78,7 +78,7 @@ first), so push script or layer changes before a remote build.
 For local runs:
 
 - missing `sources/poky` is fetched automatically (`repo init` +
-  `repo sync`); add `--force-resync` to re-run `repo init` + `repo sync --force-checkout`
+  `repo sync`); add `--force-resync` to re-run `repo init` + `repo sync --force-checkout --detach`
   on an existing `sources/` (discards uncommitted edits there; lists them first)
 - sstate lives in `./sstate` of the directory the script is launched
   from (`ASTRAOS_SSTATE_DIR` to override), downloads in

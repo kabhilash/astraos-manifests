@@ -38,10 +38,11 @@ Machine).
 
 - **Layers.** If `sources/poky` is missing the script runs `repo init` and
   `repo sync` in the checkout first. `--force-resync` re-runs
-  `repo init` and `repo sync --force-checkout` even when `sources/` exists
+  `repo init` and `repo sync --force-checkout --detach` even when `sources/` exists
   (`scripts/build --force-resync dev-image ...`). `--force-checkout`
   overwrites uncommitted edits in `sources/*`; the affected projects are
-  listed first. Committed work on local branches is kept.
+  listed first. Every project ends up on a detached HEAD at its manifest
+  revision; commits on local branches are kept in those branches.
   This runs on the host, so your git/SSH access to the layer remotes
   applies.
 - **Caches.** `sstate/` goes in the directory you launch the script from

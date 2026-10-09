@@ -113,7 +113,7 @@ Pass --remote to dispatch via ssh to the build machine instead
 
 Local runs fetch the layers (repo init + repo sync in ${ASTRAOS_ROOT}) when
 sources/poky is missing. --force-resync re-runs repo sync even if sources/
-exists, re-running repo init and repo sync --force-checkout (discards
+exists, re-running repo init and repo sync --force-checkout --detach (discards
 uncommitted edits in sources/*; the projects affected are listed, then a
 10s pause lets you Ctrl+C).
 Over --remote the builder is already synced on every dispatch, so the flag
@@ -268,9 +268,11 @@ _ensure_sources() {
     local sync_flags=""
     if [ "${FORCE_RESYNC}" = 1 ]; then
         # --force-resync: re-run repo init (refreshes the manifest checkout
-        # settings) and sync with --force-checkout, which overwrites
-        # uncommitted edits in sources/*. Committed work is kept (repo
-        # rebases local branches). Show what's about to be discarded.
+        # settings) and sync with --force-checkout --detach: every project
+        # goes back to its manifest revision on a detached HEAD, and
+        # uncommitted edits in sources/* are overwritten. Commits on local
+        # branches stay in those branches, just not checked out. Show
+        # what's about to be discarded.
         if [ -d "${ASTRAOS_ROOT}/.repo" ]; then
             local dirty
             dirty=$(cd "${ASTRAOS_ROOT}" && repo status 2>/dev/null | grep -E '^project ' || true)
@@ -278,7 +280,7 @@ _ensure_sources() {
                 _force_resync_warning "${dirty}"
             fi
         fi
-        sync_flags="--force-checkout"
+        sync_flags="--force-checkout --detach"
     fi
     if [ ! -d "${ASTRAOS_ROOT}/.repo" ] || [ "${FORCE_RESYNC}" = 1 ]; then
         echo ">>> repo init in ${ASTRAOS_ROOT}"

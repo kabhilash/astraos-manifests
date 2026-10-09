@@ -33,5 +33,5 @@ targets the build machine.
 
 For a fresh `sources/` on a **local** checkout this skill is not needed:
 `./scripts/build --local --force-resync <subcommand> ...` re-runs
-`repo init` + `repo sync --force-checkout`, and a missing `sources/poky` is
+`repo init` + `repo sync --force-checkout --detach`, and a missing `sources/poky` is
 fetched automatically.
