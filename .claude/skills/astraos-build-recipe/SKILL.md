@@ -1,12 +1,12 @@
 ---
 name: astraos-build-recipe
-description: Bitbake a single AstraOS recipe (optionally a specific BitBake task on it) for a target MACHINE. Use whenever the user asks to "bitbake recipe X for Y", "build just qtbase for cm5", "rerun -c populate_sysroot on libusb1 for raspberrypi5", "build only the astrax-bt recipe", "compile spdlog by itself", or any phrasing that means "run BitBake on a single recipe rather than a whole image". For full image builds use `astraos-build-image` or `astraos-build-prod`. For arbitrary BitBake invocations with multiple flags use `astraos-bitbake`.
+description: Bitbake a single AstraOS recipe (optionally a specific BitBake task on it) for a target MACHINE. Use whenever the user asks to "bitbake recipe X for Y", "build just qtbase for cm5", "rerun -c populate_sysroot on libusb1 for raspberrypi5", "build only the astrax-bt recipe", "compile spdlog by itself", or any phrasing that means "run BitBake on a single recipe rather than a whole image". For full image builds use `astraos-build-dev` or `astraos-build-prod`. For arbitrary BitBake invocations with multiple flags use `astraos-bitbake`.
 ---
 
 Run the recipe subcommand of the AstraOS build script:
 
 ```
-cd /Users/akothapalli/Projects/AstraA/X/AstraOS
+# from the repo root (the astraos-manifests checkout)
 ./scripts/build recipe <MACHINE> <RECIPE> [TASK]
 ```
 
@@ -17,7 +17,7 @@ specify a task, omit it — BitBake will run the default task chain
 
 ## Extracting parameters from the user's request
 
-**MACHINE** — same mapping as `astraos-build-image`. If unspecified,
+**MACHINE** — same mapping as `astraos-build-dev`. If unspecified,
 ask the user which target.
 
 **RECIPE** — the package name as it appears in BitBake. Common ones the
@@ -66,3 +66,23 @@ User says "drop me into the qtbase devshell on the variscite":
 If the user wants a more complex BitBake invocation (multiple recipes,
 flags like `-k -v`, environment overrides), use `astraos-bitbake`
 instead.
+
+## Local vs remote
+
+Default is local: the build runs in the local Docker daemon, in this
+checkout. `--remote` (e.g. `./scripts/build --remote recipe <MACHINE> <RECIPE> [TASK]`) dispatches to
+the build machine instead; only pass it if the user asks for it. The
+builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
+first), so push script or layer changes before a remote build.
+
+For local runs:
+
+- missing `sources/poky` is fetched automatically (`repo init` +
+  `repo sync`); add `--force-resync` to re-sync an existing `sources/`
+- sstate lives in `./sstate` of the directory the script is launched
+  from (`ASTRAOS_SSTATE_DIR` to override), downloads in
+  `~/yocto/downloads` (`ASTRAOS_DL_DIR`) — launch from the same
+  directory each time to keep the cache warm
+- the build dir is `build-<MACHINE>/` inside the checkout
+
+Full walkthrough: `docs/BUILDING.md`.

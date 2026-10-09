@@ -35,8 +35,9 @@ BB_DISKMON_DIRS ??= "\
 
 CONF_VERSION = "2"
 
-# Uniform TMPDIR across all MACHINEs. Two things conspire to suffix
-# tmp/ with the C library name (-> tmp-glibc/) when nothing else
+# TMPDIR is tmp-<MACHINE>/ inside the build dir (build-<MACHINE>/tmp-<MACHINE>/),
+# the same layout for every MACHINE. Two things conspire to suffix
+# TMPDIR with the C library name (-> tmp-<MACHINE>-glibc/) when nothing else
 # intervenes:
 #
 #   bitbake.conf:   TMPDIR ??= "${TOPDIR}/tmp"
@@ -50,8 +51,8 @@ CONF_VERSION = "2"
 #
 # TMPDIR is in BB_HASHCONFIG_WHITELIST so sstate cache continues to
 # hit; the only re-work on the next build is relinking + re-creating
-# the tmp/ tree.
-TMPDIR = "${TOPDIR}/tmp"
+# the tmp tree.
+TMPDIR = "${TOPDIR}/tmp-@MACHINE@"
 TCLIBCAPPEND = ""
 
 # meta-imx ships bbappends for FSL-distro recipes (fsl-image-gui-chromium,

@@ -1,23 +1,23 @@
 ---
 name: astraos-bitbake
-description: Run an arbitrary BitBake invocation (with any flags / multiple targets / advanced options) inside the AstraOS build environment for a target MACHINE. Use whenever the user wants something more flexible than `astraos-build-image`/`astraos-build-recipe` — e.g. "bitbake -k -v qtbase qtdeclarative for raspberrypi5", "bitbake with --runall=fetch on cm5", "build two recipes together with continue-on-error", "run BitBake with verbose tracing". Prefer the more specific skills (image, recipe, sdk) when the request fits one of them; reach for this skill when the user is doing power-user BitBake work.
+description: Run an arbitrary BitBake invocation (with any flags / multiple targets / advanced options) inside the AstraOS build environment for a target MACHINE. Use whenever the user wants something more flexible than `astraos-build-dev`/`astraos-build-recipe` — e.g. "bitbake -k -v qtbase qtdeclarative for raspberrypi5", "bitbake with --runall=fetch on cm5", "build two recipes together with continue-on-error", "run BitBake with verbose tracing". Prefer the more specific skills (image, recipe, sdk) when the request fits one of them; reach for this skill when the user is doing power-user BitBake work.
 ---
 
 Run the bitbake passthrough subcommand of the AstraOS build script:
 
 ```
-cd /Users/akothapalli/Projects/AstraA/X/AstraOS
+# from the repo root (the astraos-manifests checkout)
 ./scripts/build bitbake <MACHINE> <bitbake-args...>
 ```
 
 Everything after `<MACHINE>` is forwarded verbatim to BitBake. The
 script first sources `setup-environment <MACHINE>` (which writes
-`build/conf/{bblayers,local}.conf` for that MACHINE), then runs
+`build-<MACHINE>/conf/{bblayers,local}.conf` for that MACHINE), then runs
 `bitbake <args...>`.
 
 ## Extracting parameters from the user's request
 
-**MACHINE** — same mapping as `astraos-build-image` (raspberrypi5,
+**MACHINE** — same mapping as `astraos-build-dev` (raspberrypi5,
 raspberrypi-cm5-io-board, imx8mp-var-dart, astrax-variscite-imx8mp). If
 unspecified, ask.
 
@@ -57,3 +57,23 @@ variscite":
 If the user's request fits the simpler `image` / `prod-image` / `sdk` /
 `recipe` skills, prefer those — they're easier to read in chat history
 than a flag-heavy `bitbake` line.
+
+## Local vs remote
+
+Default is local: the build runs in the local Docker daemon, in this
+checkout. `--remote` (e.g. `./scripts/build --remote bitbake <MACHINE> <args...>`) dispatches to
+the build machine instead; only pass it if the user asks for it. The
+builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
+first), so push script or layer changes before a remote build.
+
+For local runs:
+
+- missing `sources/poky` is fetched automatically (`repo init` +
+  `repo sync`); add `--force-resync` to re-sync an existing `sources/`
+- sstate lives in `./sstate` of the directory the script is launched
+  from (`ASTRAOS_SSTATE_DIR` to override), downloads in
+  `~/yocto/downloads` (`ASTRAOS_DL_DIR`) — launch from the same
+  directory each time to keep the cache warm
+- the build dir is `build-<MACHINE>/` inside the checkout
+
+Full walkthrough: `docs/BUILDING.md`.

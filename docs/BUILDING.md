@@ -1,8 +1,8 @@
 # Building AstraOS
 
 Everything goes through `scripts/build`. It runs BitBake inside the
-`astraos-builder` devcontainer image, either on the dedicated build machine
-(`--remote`, the default) or on your own Docker daemon (`--local`).
+`astraos-builder` devcontainer image, on your own Docker daemon by default
+(`--local`) or on the dedicated build machine (`--remote`).
 
 ## Which command builds what
 
@@ -22,7 +22,7 @@ Everything goes through `scripts/build`. It runs BitBake inside the
 - mcb hardware is still pending, so the production chain cannot be
   validated end to end yet (see `docs/ARCHITECTURE.md`).
 
-## Remote builds (default)
+## Local builds (default)
 
 ```bash
 scripts/build image imx8mp-var-dart                  # Symphony, dev
@@ -30,46 +30,15 @@ scripts/build image astrax-variscite-imx8mp          # mcb, dev
 scripts/build prod-image                             # mcb, production
 ```
 
-`--remote` is implied unless you are already inside the devcontainer. The
-script ssh-es to `akothapalli@10.11.12.20`, then on the builder:
+(`--local` is accepted but implied, unless noted otherwise.)
 
-1. creates `sstate/` and `downloads/` and, if the workspace is missing,
-   clones it and runs `repo init` + `repo sync`;
-2. runs `git pull --ff-only` (retried 3x) and `repo sync` in the workspace;
-3. re-runs `scripts/build --local ...` there.
-
-Because of step 2, **the builder builds what is on GitHub `main`, not your
-working tree.** Commit and push script/layer changes before a remote build.
-
-Fetching the dev image (dev `.wic.zst` only; there is no `download` for the
-production image):
-
-```bash
-scripts/build download imx8mp-var-dart [<dest-dir>]   # default: current dir
-scripts/build download astrax-variscite-imx8mp
-```
-
-Other remote-only helpers: `scripts/build clean` wipes the builder
-workspace and re-syncs (caches kept). Override the target with
-`ASTRAOS_BUILDER_HOST`, `ASTRAOS_BUILDER_USER`, `ASTRAOS_BUILDER_PORT`,
-`ASTRAOS_BUILDER_PATH`, `ASTRAOS_BUILDER_HOST_ROOT`.
-
-## Local builds
-
-Same commands with `--local`:
-
-```bash
-scripts/build --local image imx8mp-var-dart
-scripts/build --local image astrax-variscite-imx8mp
-scripts/build --local prod-image
-```
-
-Prerequisites: Docker, and `repo` on `PATH`. Local builds are slow; use them
-for small iterations (see `docs/ARCHITECTURE.md`, Build Machine).
+Prerequisites: Docker, and `repo` on `PATH`. Local builds are slow; the
+build machine has far more cores (see `docs/ARCHITECTURE.md`, Build
+Machine).
 
 - **Layers.** If `sources/poky` is missing the script runs `repo init` and
   `repo sync` in the checkout first. `--force-resync` re-runs `repo sync`
-  even when `sources/` exists (`scripts/build --local --force-resync image ...`).
+  even when `sources/` exists (`scripts/build --force-resync image ...`).
   This runs on the host, so your git/SSH access to the layer remotes
   applies.
 - **Caches.** `sstate/` goes in the directory you launch the script from
@@ -79,20 +48,56 @@ for small iterations (see `docs/ARCHITECTURE.md`, Build Machine).
 - **Workspace.** The build dir is `build-<MACHINE>/` in the checkout
   (`ASTRAOS_BUILDER_PATH` to override).
 
-Output, for both local and remote builds, is under
-`build-<MACHINE>/tmp-glibc/deploy/images/<MACHINE>/` (`tmp/` instead of
-`tmp-glibc/` on non-i.MX MACHINEs). The dev image is
-`astraos-image-dev-<MACHINE>.rootfs.wic.zst`.
+Output lands in `build-<MACHINE>/tmp-<MACHINE>/deploy/images/<MACHINE>/`:
+
+- dev: `astraos-image-dev-<MACHINE>.rootfs.wic.zst`
+- prod: the `astraos-image-astrax-variscite-imx8mp.*` files in the same
+  directory
+
+## Remote builds
+
+Add `--remote`:
+
+```bash
+scripts/build --remote image imx8mp-var-dart         # Symphony, dev
+scripts/build --remote image astrax-variscite-imx8mp # mcb, dev
+scripts/build --remote prod-image                    # mcb, production
+```
+
+The script ssh-es to `akothapalli@10.11.12.20`, then on the builder:
+
+1. creates `sstate/` and `downloads/` and, if the workspace is missing,
+   clones it and runs `repo init` + `repo sync`;
+2. runs `git pull --ff-only` (retried 3x) and `repo sync` in the workspace;
+3. re-runs `scripts/build --local ...` there.
+
+Because of step 2, **the builder builds what is on GitHub `main`, not your
+working tree.** Commit and push script/layer changes before a remote build.
+The builder keeps its sstate at `/home/akothapalli/yocto/sstate`.
+
+Fetching the result, matching the build you ran:
+
+```bash
+scripts/build download imx8mp-var-dart [<dest-dir>]        # dev wic.zst, default dest: current dir
+scripts/build download astrax-variscite-imx8mp [<dest-dir>]
+scripts/build download-prod [<dest-dir>]                   # prod wic, mcb
+```
+
+Other remote-only helpers: `scripts/build clean` (always targets the
+builder; rejects `--local`) wipes the builder workspace and re-syncs,
+keeping caches. Override the target with `ASTRAOS_BUILDER_HOST`,
+`ASTRAOS_BUILDER_USER`, `ASTRAOS_BUILDER_PORT`, `ASTRAOS_BUILDER_PATH`,
+`ASTRAOS_BUILDER_HOST_ROOT`.
 
 ## Other useful commands
 
 ```bash
-scripts/build [--local] shell <MACHINE>              # interactive shell, env sourced
-scripts/build [--local] recipe <MACHINE> <recipe> [task]
-scripts/build [--local] bitbake <MACHINE> <args...>
-scripts/build [--local] sdk <MACHINE>
-scripts/build [--local] publish <MACHINE>            # dev rpm feed, Variscite MACHINEs
-scripts/build container                              # rebuild the builder image
+scripts/build [--remote] shell <MACHINE>             # interactive shell, env sourced
+scripts/build [--remote] recipe <MACHINE> <recipe> [task]
+scripts/build [--remote] bitbake <MACHINE> <args...>
+scripts/build [--remote] sdk <MACHINE>
+scripts/build [--remote] publish <MACHINE>           # dev rpm feed, Variscite MACHINEs
+scripts/build [--remote] container                   # rebuild the builder image
 ```
 
 `scripts/build --help` lists every subcommand and environment variable.

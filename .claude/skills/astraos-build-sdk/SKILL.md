@@ -7,13 +7,13 @@ Run the sdk subcommand of the AstraOS build script with the user's
 chosen MACHINE:
 
 ```
-cd /Users/akothapalli/Projects/AstraA/X/AstraOS
+# from the repo root (the astraos-manifests checkout)
 ./scripts/build sdk <MACHINE>
 ```
 
 ## Extracting MACHINE from the user's request
 
-Same mapping as `astraos-build-image`:
+Same mapping as `astraos-build-dev`:
 
 | User says | MACHINE |
 |---|---|
@@ -31,14 +31,36 @@ or `imx8mp-var-dart` while `mcb` hardware is pending.
 ## What the user gets
 
 A self-extracting `.sh` installer in
-`/home/akothapalli/yocto/astraos/build-<MACHINE>/tmp/deploy/sdk/` named
+`build-<MACHINE>/tmp-<MACHINE>/deploy/sdk/` in the checkout (or
+`/home/akothapalli/yocto/astraos/` on the build machine for `--remote`
+builds), named
 something like
-`astraos-glibc-x86_64-astraos-sdk-cortexa53-<MACHINE>-toolchain-0.1.0.sh`
-on the build machine. Running it on a developer Mac/Linux box installs
+`astraos-glibc-x86_64-astraos-sdk-cortexa53-<MACHINE>-toolchain-0.1.0.sh`. Running it on a developer Mac/Linux box installs
 the cross-sysroot under `/opt/astraos-sdk/`. The user then sources
 `environment-setup-...` to put the cross-compile toolchain on PATH and
 build app code (e.g. `astraX_BT`) against the AstraOS target sysroot.
 
 Cold SDK builds take a while (the Qt6 stack is heavy); subsequent
-builds for the same MACHINE hit `/home/akothapalli/yocto/sstate/<MACHINE>/`
-and finish fast.
+builds for the same MACHINE hit the per-MACHINE sstate cache
+(`/home/akothapalli/yocto/sstate/<MACHINE>/` on the build machine) and
+finish fast.
+
+## Local vs remote
+
+Default is local: the build runs in the local Docker daemon, in this
+checkout. `--remote` (e.g. `./scripts/build --remote sdk <MACHINE>`) dispatches to
+the build machine instead; only pass it if the user asks for it. The
+builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
+first), so push script or layer changes before a remote build.
+
+For local runs:
+
+- missing `sources/poky` is fetched automatically (`repo init` +
+  `repo sync`); add `--force-resync` to re-sync an existing `sources/`
+- sstate lives in `./sstate` of the directory the script is launched
+  from (`ASTRAOS_SSTATE_DIR` to override), downloads in
+  `~/yocto/downloads` (`ASTRAOS_DL_DIR`) — launch from the same
+  directory each time to keep the cache warm
+- the build dir is `build-<MACHINE>/` inside the checkout
+
+Full walkthrough: `docs/BUILDING.md`.

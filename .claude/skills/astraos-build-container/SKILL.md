@@ -1,24 +1,25 @@
 ---
 name: astraos-build-container
-description: Rebuild the AstraOS Yocto build devcontainer Docker image. Use whenever the user asks to "rebuild the devcontainer", "rebuild the AstraOS container", "rebuild the docker image", "refresh the build container", or whenever they've changed `.devcontainer/Dockerfile` or `devcontainer.json` and need to apply those changes. By default the container build runs on the AstraOS build machine via SSH; pass `--local` if the user wants it to run on their laptop's Docker daemon instead.
+description: Rebuild the AstraOS Yocto build devcontainer Docker image. Use whenever the user asks to "rebuild the devcontainer", "rebuild the AstraOS container", "rebuild the docker image", "refresh the build container", or whenever they've changed `.devcontainer/Dockerfile` or `devcontainer.json` and need to apply those changes. By default the container build runs on the local Docker daemon; pass `--remote` if the user wants it to run on the AstraOS build machine via SSH instead.
 ---
 
 Run the container subcommand of the AstraOS build script:
 
 ```
-cd /Users/akothapalli/Projects/AstraA/X/AstraOS
+# from the repo root (the astraos-manifests checkout)
 ./scripts/build container
 ```
 
-If the user explicitly says "build it locally" or similar, prepend `--local`:
+If the user explicitly says "build it on the build machine" or similar,
+prepend `--remote`:
 
 ```
-./scripts/build --local container
+./scripts/build --remote container
 ```
 
-The script handles the SSH dispatch to the build machine
+With `--remote` the script handles the SSH dispatch to the build machine
 (`akothapalli@10.11.12.20`, workspace `/home/akothapalli/yocto/astraos`)
-on its own when running in remote mode. Just invoke the command — the
+on its own. Just invoke the command — the
 script knows what to do.
 
 The container image is tagged `astraos-builder:latest`. After it

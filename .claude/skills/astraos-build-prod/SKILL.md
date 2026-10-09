@@ -1,12 +1,12 @@
 ---
 name: astraos-build-prod
-description: Build the **signed production** AstraOS image (`astraos-image`) for the `astrax-variscite-imx8mp` MACHINE. Use whenever the user asks to "build the production image", "build prod for mcb", "build the signed mcb image", "produce the HABv4-signed wic", "build the production rootfs for the Variscite carrier", or any phrasing that means "real production-grade build for the mcb hardware". The production image includes dm-verity, HABv4 signing chain, RAUC bundle generation. It only targets the mcb MACHINE — do not attempt for raspberrypi5/cm5/Symphony (use `astraos-build-image` for those dev targets).
+description: Build the **signed production** AstraOS image (`astraos-image`) for the `astrax-variscite-imx8mp` MACHINE. Use whenever the user asks to "build the production image", "build prod for mcb", "build the signed mcb image", "produce the HABv4-signed wic", "build the production rootfs for the Variscite carrier", or any phrasing that means "real production-grade build for the mcb hardware". The production image includes dm-verity, HABv4 signing chain, RAUC bundle generation. It only targets the mcb MACHINE — do not attempt for raspberrypi5/cm5/Symphony (use `astraos-build-dev` for those dev targets).
 ---
 
 Run the prod-image subcommand of the AstraOS build script:
 
 ```
-cd /Users/akothapalli/Projects/AstraA/X/AstraOS
+# from the repo root (the astraos-manifests checkout)
 ./scripts/build prod-image
 ```
 
@@ -15,10 +15,39 @@ No MACHINE argument needed — `prod-image` is hardwired to
 `scripts/setup-environment astrax-variscite-imx8mp` and then `bitbake
 astraos-image` (note: not `-dev`).
 
+## Local vs remote
+
+Default is local: the build runs in the local Docker daemon, in this
+checkout. `--remote` (e.g. `./scripts/build --remote prod-image`) dispatches to
+the build machine instead; only pass it if the user asks for it. The
+builder builds what is on GitHub `main` (it `git pull`s and `repo sync`s
+first), so push script or layer changes before a remote build.
+
+For local runs:
+
+- missing `sources/poky` is fetched automatically (`repo init` +
+  `repo sync`); add `--force-resync` to re-sync an existing `sources/`
+- sstate lives in `./sstate` of the directory the script is launched
+  from (`ASTRAOS_SSTATE_DIR` to override), downloads in
+  `~/yocto/downloads` (`ASTRAOS_DL_DIR`) — launch from the same
+  directory each time to keep the cache warm
+- the build dir is `build-<MACHINE>/` inside the checkout
+
+Full walkthrough: `docs/BUILDING.md`.
+
+## Getting the output
+
+- Local build: the image is in
+  `build-astrax-variscite-imx8mp/tmp-astrax-variscite-imx8mp/deploy/images/astrax-variscite-imx8mp/`
+  in the checkout.
+- `--remote` build: `scripts/build download-prod [<dest>]` scp's the
+  production wic from the build machine (it matches `prod-image`, just
+  as `download <MACHINE>` matches the dev image build).
+
 ## When this is the wrong skill
 
-- User wants RPi5 or CM5 build → `astraos-build-image`
-- User wants Variscite Symphony (dev) build → `astraos-build-image` with
+- User wants RPi5 or CM5 build → `astraos-build-dev`
+- User wants Variscite Symphony (dev) build → `astraos-build-dev` with
   `imx8mp-var-dart`
 - User wants the cross-SDK installer → `astraos-build-sdk`
 

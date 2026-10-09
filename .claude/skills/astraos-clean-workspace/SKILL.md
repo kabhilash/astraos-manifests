@@ -6,7 +6,7 @@ description: Wipe `/home/akothapalli/yocto/astraos` on the AstraOS build machine
 Run the clean subcommand of the AstraOS build script:
 
 ```
-cd /Users/akothapalli/Projects/AstraA/X/AstraOS
+# from the repo root (the astraos-manifests checkout)
 ./scripts/build clean
 ```
 
@@ -30,3 +30,7 @@ immediately invoke any of the other `./scripts/build` subcommands.
 
 The clean subcommand cannot run with `--local` — it specifically
 targets the build machine.
+
+For a fresh `sources/` on a **local** checkout this skill is not needed:
+`./scripts/build --local --force-resync <subcommand> ...` re-runs
+`repo sync`, and a missing `sources/poky` is fetched automatically.

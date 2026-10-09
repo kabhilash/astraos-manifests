@@ -4,13 +4,13 @@
 # Single dispatcher for rebuilding the devcontainer, building image variants,
 # building the cross-SDK, and bitbake-ing any single recipe.
 #
-# Defaults to remote execution against the AstraOS build machine
-# (10.11.12.20 / Tailscale 100.82.113.92, ssh user akothapalli, passwordless
-# key auth). Use --local to run against your local Docker daemon instead.
+# Defaults to local execution on your own Docker daemon. Use --remote to
+# dispatch to the AstraOS build machine instead (10.11.12.20 / Tailscale
+# 100.82.113.92, ssh user akothapalli, passwordless key auth).
 #
 # Layered detection:
-#   * --local on a Mac/dev box      docker run on local Docker
-#   * default (no --local)          ssh akothapalli@10.11.12.20 then
+#   * default (or --local)          docker run on local Docker
+#   * --remote                      ssh akothapalli@10.11.12.20 then
 #                                   docker run there
 #   * already inside devcontainer   skip docker, just bash -c
 #
@@ -23,6 +23,8 @@
 #   scripts/build [--local | --remote] bitbake     <MACHINE> <args...>
 #   scripts/build [--local | --remote] shell       <MACHINE>
 #   scripts/build [--local | --remote] publish     <MACHINE>
+#   scripts/build download      <MACHINE> [<dest-dir>]   (dev wic from the builder)
+#   scripts/build download-prod [<dest-dir>]             (prod wic from the builder)
 #
 # MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-variscite-imx8mp
 #
@@ -38,12 +40,12 @@
 #   ASTRAOS_DL_DIR=$HOME/yocto/downloads
 #
 # Dev rpm feed ('publish'; see docs/ARCHITECTURE.md "Dev package feed"):
-#   ASTRAOS_FEED_ROOT   --local: an absolute path, or relative to the
+#   ASTRAOS_FEED_ROOT   local (default): an absolute path, or relative to the
 #                        current checkout (default: ${ASTRAOS_ROOT}/feeds,
 #                        i.e. this repo's own directory - NOT inside any
 #                        build-*/ dir, and outside ${BUILDER_PATH} so
 #                        `scripts/build clean` can't delete it).
-#                        --remote (default, no flag, or --remote): MUST be
+#                        --remote: MUST be
 #                        set to an absolute path - there's no default,
 #                        since a relative one would resolve against
 #                        ${BUILDER_PATH} on the far side of the ssh hop,
@@ -79,7 +81,8 @@ FEED_NGINX_IMAGE="nginx:1.27-alpine"
 # Canonical source of truth: GitHub.
 ASTRAOS_GIT_URL="${ASTRAOS_GIT_URL:-https://github.com/kabhilash/astraos-manifests.git}"
 
-MODE=""    # auto by default; set by --local / --remote
+MODE=""    # local by default; set by --local / --remote
+MODE_FLAG=""   # what the user typed, if anything (clean rejects --local)
 FORCE_RESYNC=0   # set by --force-resync
 
 usage() {
@@ -96,6 +99,7 @@ Usage (most subcommands accept optional --local | --remote and --force-resync pr
   scripts/build bitbake     <MACHINE> <args...>        bitbake passthrough
   scripts/build shell       <MACHINE>                  Interactive shell, env sourced
   scripts/build download    <MACHINE> [<dest-dir>]     scp the latest dev wic.zst from the builder
+  scripts/build download-prod [<dest-dir>]             scp the latest prod wic.zst (mcb) from the builder
   scripts/build publish     <MACHINE>                  Build astraos-image-dev, snapshot its rpm feed and
                                                        serve it to dev boards (Variscite MACHINEs only)
                                                        Needs ASTRAOS_FEED_ROOT=<absolute path> when run
@@ -103,11 +107,11 @@ Usage (most subcommands accept optional --local | --remote and --force-resync pr
 
 MACHINE: raspberrypi5 | raspberrypi-cm5-io-board | imx8mp-var-dart | astrax-variscite-imx8mp
 
-Default mode: --remote, dispatches via ssh to the build machine
+Default mode: --local, runs on the local Docker daemon.
+Pass --remote to dispatch via ssh to the build machine instead
   ${BUILDER_USER}@${BUILDER_HOST}:${BUILDER_PORT} (path: ${BUILDER_PATH})
-Pass --local to run on the local Docker daemon instead.
 
---local fetches the layers (repo init + repo sync in ${ASTRAOS_ROOT}) when
+Local runs fetch the layers (repo init + repo sync in ${ASTRAOS_ROOT}) when
 sources/poky is missing. --force-resync re-runs repo sync even if sources/
 exists. Over --remote the builder is already synced on every dispatch, so
 the flag is a no-op there.
@@ -309,7 +313,7 @@ _publish() {
     # Hardlink the rpms: cheap, and safe because bitbake replaces rpms
     # rather than rewriting them. repodata/ is copied outright so the
     # snapshot never shares an inode with a later package-index run.
-    local deploy_rpm="${build_dir}/tmp/deploy/rpm"
+    local deploy_rpm="${build_dir}/tmp-${machine}/deploy/rpm"
     local staging="${machine_root}/.staging-${build_id}"
     rm -rf "${staging}"
     cp -al "${deploy_rpm}" "${staging}"
@@ -346,8 +350,8 @@ esac
 # Parse leading flags (any order)
 while :; do
     case "${1:-}" in
-        --local)        MODE=local;  shift ;;
-        --remote)       MODE=remote; shift ;;
+        --local)        MODE=local;  MODE_FLAG=local; shift ;;
+        --remote)       MODE=remote; MODE_FLAG=remote; shift ;;
         --force-resync) FORCE_RESYNC=1; shift ;;
         *) break ;;
     esac
@@ -358,50 +362,51 @@ case "${1:-}" in
     ""|-h|--help|help) usage ;;
 esac
 
-# Auto-pick mode if user didn't specify
-if [ -z "${MODE}" ]; then
-    if _in_container; then
-        MODE=local         # already inside the build env; just bash -c
-    else
-        MODE=remote        # default: dispatch to the build machine
-    fi
-fi
+# Default mode: local (inside the devcontainer that means just bash -c).
+# Remote dispatch is opt-in via --remote.
+[ -z "${MODE}" ] && MODE=local
 
-# download: scp the latest dev-image wic.zst from the builder to a local
-# dir. Direct host-to-host transfer; no docker, no remote dispatch.
-if [ "${1:-}" = "download" ]; then
+# download / download-prod: scp the latest dev (or prod) image wic.zst from
+# the builder to a local dir, matching the build subcommand that produced it
+# (image -> download <MACHINE>, prod-image -> download-prod). Only useful
+# for --remote builds; local builds leave the wic in build-<MACHINE>/.
+# Direct host-to-host transfer; no docker, no remote dispatch.
+if [ "${1:-}" = "download" ] || [ "${1:-}" = "download-prod" ]; then
+    DL_KIND="${1}"
     shift
     if _in_container; then
-        echo "ERROR: 'download' runs on the host, not inside the container" >&2
+        echo "ERROR: '${DL_KIND}' runs on the host, not inside the container" >&2
         exit 1
     fi
-    MACHINE="${1:-}"
-    # Default dest = the dir the user ran scripts/build from (captured at
-    # script start as INVOCATION_PWD). Lets you run the command from any
-    # directory and have the wic land right there.
-    DEST="${2:-${INVOCATION_PWD}}"
-    if [ -z "${MACHINE}" ]; then
-        echo "Usage: scripts/build download <MACHINE> [<dest-dir>]" >&2
-        exit 1
-    fi
-    case "${MACHINE}" in
-        raspberrypi5|raspberrypi-cm5-io-board|imx8mp-var-dart|astrax-variscite-imx8mp) ;;
-        *)
-            echo "ERROR: unknown MACHINE '${MACHINE}'" >&2
+    if [ "${DL_KIND}" = "download-prod" ]; then
+        # prod-image is hardwired to the mcb MACHINE; arg 1 is the dest dir.
+        MACHINE="astrax-variscite-imx8mp"
+        DEST="${1:-${INVOCATION_PWD}}"
+        WIC_NAME="astraos-image-${MACHINE}.rootfs.wic*"
+        BUILD_HINT="scripts/build --remote prod-image"
+    else
+        MACHINE="${1:-}"
+        # Default dest = the dir the user ran scripts/build from (captured at
+        # script start as INVOCATION_PWD). Lets you run the command from any
+        # directory and have the wic land right there.
+        DEST="${2:-${INVOCATION_PWD}}"
+        WIC_NAME="astraos-image-dev-${MACHINE}.rootfs.wic.zst"
+        BUILD_HINT="scripts/build --remote image ${MACHINE}"
+        if [ -z "${MACHINE}" ]; then
+            echo "Usage: scripts/build download <MACHINE> [<dest-dir>]" >&2
             exit 1
-            ;;
-    esac
-    # TMPDIR varies: vanilla poky uses tmp/, but meta-imx sets
-    # TMPDIR=${TOPDIR}/tmp-${LIBC} so variscite/mcb builds land in
-    # tmp-glibc/. Probe both with a single ssh round-trip and pick the
-    # one that exists.
-    REMOTE_WIC_REL="deploy/images/${MACHINE}/astraos-image-dev-${MACHINE}.rootfs.wic.zst"
+        fi
+        _check_machine "${MACHINE}"
+    fi
+    # TMPDIR is tmp-<MACHINE>/ (see conf/local.conf.in); older builds used
+    # tmp/ or tmp-glibc/. Probe all with a single ssh round-trip and take
+    # the first match.
     BUILD_DIR="${BUILDER_PATH}/build-${MACHINE}"
     REMOTE_WIC=$(ssh -p "${BUILDER_PORT}" "${BUILDER_USER}@${BUILDER_HOST}" \
-        "for d in tmp tmp-glibc; do f=${BUILD_DIR}/\$d/${REMOTE_WIC_REL}; [ -e \"\$f\" ] && { echo \"\$f\"; exit 0; }; done; exit 1")
+        "for d in tmp-${MACHINE} tmp tmp-glibc; do f=\$(ls -t ${BUILD_DIR}/\$d/deploy/images/${MACHINE}/${WIC_NAME} 2>/dev/null | head -1); [ -n \"\$f\" ] && { echo \"\$f\"; exit 0; }; done; exit 1")
     if [ -z "${REMOTE_WIC}" ]; then
-        echo "ERROR: no wic.zst found under ${BUILD_DIR}/{tmp,tmp-glibc}/${REMOTE_WIC_REL}" >&2
-        echo "       (did the build finish? try scripts/build image ${MACHINE} first)" >&2
+        echo "ERROR: no ${WIC_NAME} found under ${BUILD_DIR}/tmp-${MACHINE}/deploy/images/${MACHINE}/" >&2
+        echo "       (did the build finish? try ${BUILD_HINT} first)" >&2
         exit 1
     fi
     echo ">>> fetching ${REMOTE_WIC}"
@@ -419,7 +424,7 @@ if [ "${1:-}" = "clean" ]; then
         echo "ERROR: 'clean' must run from the host, not inside the container" >&2
         exit 1
     fi
-    if [ "${MODE}" = "local" ]; then
+    if [ "${MODE_FLAG}" = "local" ]; then
         echo "ERROR: 'clean' targets the build machine; remove --local" >&2
         exit 1
     fi

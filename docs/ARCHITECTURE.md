@@ -331,8 +331,8 @@ the server because it has the cores, RAM, and persistent caches).
 | Workspace path | `/home/akothapalli/yocto/astraos/` (NVMe-backed; sstate/downloads sit alongside under `/home/akothapalli/yocto/`) |
 | Builds run inside | the AstraOS devcontainer (Ubuntu 24.04, Yocto-supported) |
 
-`scripts/build` defaults to remote execution against this host (`--local`
-opts out for tiny iteration on the dev machine). BB_NUMBER_THREADS and
+`scripts/build` runs locally by default; `--remote` dispatches to this host,
+which is where practical builds belong. BB_NUMBER_THREADS and
 PARALLEL_MAKE auto-detect to 96 inside the container, fully utilising the
 machine.
 
