@@ -36,32 +36,14 @@ BB_DISKMON_DIRS ??= "\
 CONF_VERSION = "2"
 
 # TMPDIR is tmp-<MACHINE>/ inside the build dir (build-<MACHINE>/tmp-<MACHINE>/),
-# the same layout for every MACHINE. Two things conspire to suffix
-# TMPDIR with the C library name (-> tmp-<MACHINE>-glibc/) when nothing else
-# intervenes:
-#
-#   bitbake.conf:   TMPDIR ??= "${TOPDIR}/tmp"
-#   bitbake.conf:   TCLIBCAPPEND ??= "-${TCLIBC}"
-#   defaultsetup.conf: TMPDIR .= "${TCLIBCAPPEND}"
-#
-# The .= in defaultsetup is processed AFTER local.conf, so setting
-# TMPDIR alone is not enough - we have to also zero out TCLIBCAPPEND.
-# AstraOS only ships glibc; we don't multi-target the C library, so
-# losing the tmp-${TCLIBC} isolation costs us nothing.
+# the same layout for every MACHINE. (Before wrynose, defaultsetup.conf also
+# appended "-${TCLIBC}" via TCLIBCAPPEND, which had to be zeroed here; that
+# variable is gone and setting it is now a parse error.)
 #
 # TMPDIR is in BB_HASHCONFIG_WHITELIST so sstate cache continues to
 # hit; the only re-work on the next build is relinking + re-creating
 # the tmp tree.
 TMPDIR = "${TOPDIR}/tmp-@MACHINE@"
-TCLIBCAPPEND = ""
-
-# meta-imx ships bbappends for FSL-distro recipes (fsl-image-gui-chromium,
-# packagegroup-fsl-*, etc.) that don't exist in the astraos distro. Bitbake
-# treats orphan bbappends as fatal by default - downgrade to warnings so
-# parse can complete. Variscite/NXP carry the same setting in their
-# reference builds; the same bbappends are harmless when their target
-# recipes are simply absent.
-BB_DANGLINGAPPENDS_WARNONLY = "1"
 
 # Freescale/NXP proprietary binary userspace (imx-gpu-viv Vivante driver,
 # imx-vpu-* codec libraries, firmware-imx-*) gates do_unpack on an explicit
